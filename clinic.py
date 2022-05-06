@@ -13,7 +13,7 @@ nurses = []
 receptionists = []
 
 prescriptions = []
-appointments = []
+appointments_schedule = []
 
 
 class HealthCareProfessional():
@@ -53,7 +53,7 @@ class Patient():
 
     def request_appointment(self,receptionist,availabe_doctor):
         
-        request = receptionist.make_appointment(self,appointments,availabe_doctor)
+        request = receptionist.make_appointment(self,appointments_schedule,availabe_doctor)
 
         return request
 
@@ -70,6 +70,7 @@ class Prescription():
     def __str__(self) -> str:
         return f'Patient: {self.patient.name}, Type: {self.type}, Dosage: {self.dosage}, Quantity: {self.quantity}'
 
+
 class Appointment():
 
     def __init__(self, type, staff, patient, date, time) -> None:
@@ -82,8 +83,6 @@ class Appointment():
     def __str__(self) -> str:
         return f'{self.date} {self.time} {self.patient.name} {self.staff.name} {self.type}'
 
-
-        
 
 class Receptionist():
 
@@ -123,23 +122,159 @@ class AppointmentSchedule():
 
 ### Functions ###
 
+def menu(options):
+    '''Generates CLI menus'''
+
+    options_string = "\033[96mPlease select one of the options below:\033[0m\n\n"
+    choice_number = 1
+    for option in options:
+        options_string += f"\033[93m {choice_number}:\033[0m {option}\n"
+        choice_number +=1
+    
+    options_string += "\033[93m-1:\033[0m Anywhere to return to the main menu \n\
+\033[93m 0:\033[0m Quit\n\n\
+> "
+
+    clear_screen()
+    menu_selection = input(options_string)
+
+    return menu_selection
+
+def check_duplicate(patient_info):
+    '''Checks for duplicate entries
+while adding and editing patients.   
+'''
+    duplicate = False
+    file_no = None
+
+    # If the first and last name are already on the follow up schedule, duplicate = True:
+    for patient in appointments_schedule:
+        if patient[1] == patient_info[0] and patient[2] == patient_info[1]:
+            duplicate = True
+            file_no = patient[0]
+            break
+
+    return [duplicate, file_no]
+
+
+def register_test_patients():
+    '''Adds a group of test patients
+for testing and trying application feature.
+'''
+    for patient in test_patients:
+        duplicate = check_duplicate([patient[0], patient[1]])[0]
+
+        if not duplicate:
+            add_patient(patient[0], patient[1],
+                        patient[2], patient[3], patient[4])
+            print(
+                f'\033[92m{patient[0]} {patient[1]} was added successfully \033[0m')
+        else:
+            print(
+                f'\033[91m{patient[0]} {patient[1]} is already on the follow up schedule\033[0m')
+
+
+def register_patient_interface():
+    '''Interface for registering patients to the clinic.'''
+
+    
+    input_item = ''
+    while input_item != '-1':
+
+        # clear_screen()
+        duplicate = False  # to store the value of the check_duplicate function
+        input_list = []
+        
+        # Each header will be used as a key for the user input during adding patient information
+        headers_list  = ['Name','Address','Phone']
+        for header in headers_list:
+            if header not in ['Next Appointment' ,'File No']:
+                if header =='Name':
+                    input_item = input(f'{header}: ').strip()
+                    while not input_item.replace(' ','').isalpha() and input_item != '-1':
+                        input_item = input(
+                            f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
+
+                # elif header =='Address':
+                #     while input_item != '-1':
+                #         input_item = input(
+                #             f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
+
+                elif header == 'Last Visit Date':
+                    # Make sure the format of the entered date is correct
+                    while input_item != '-1':
+                        try:
+                            input_item = input(
+                        f'{header} in <dd-mm-yyyy> format or hit enter for today: ') or\
+                                datetime.datetime.strftime(today, '%d-%m-%Y')
+                            input_item = datetime.datetime.strptime(input_item,'%d-%m-%Y').date()
+                            input_item = datetime.datetime.strftime(input_item,'%d-%m-%Y')
+                            print('\033[96mLast Visit Date is ' +
+                            input_item + '\033[0m')
+                            break
+                        except: 
+                            continue
+                    
+                # input_item.strip()
+
+                # if input_item == "-1":
+                #     clear_screen()
+                #     main_screen()
+                else:
+                    input_list.append(input_item.lower().title())
+
+            # Check if there is duplicate name with the same first and last name
+                # if header == 'Last Name':
+                #     duplicate = check_duplicate(input_list)[0]
+                #     file_no = check_duplicate(input_list)[1]
+
+                #     if duplicate:
+                #         print('') # A new line
+                #         what_next = input(f'\033[91mThis patient is already on the follow up schedule with a file no: {file_no}\033[0m')
+                        
+                #         if what_next == '':
+                #             input_list.clear()
+                #             break
+
+        # if not duplicate:
+        #     print('') # A new line
+        #     add_confirmation = input(
+        #         '\033[96mSave the information above (Y/N)?: \033[0m')
+        #     print('') # A new line
+
+        #     if add_confirmation.lower() == 'y':
+        #         add_patient(input_list[0], input_list[1],
+        #                     input_list[2], input_list[3], input_list[4])
+        #         export_to_cv()
+        #         print('\033[92mThe record was saved successfully\033[0m')
+        #         print('') # A new line
+        #         input_item = input(
+        #             '\033[96mHit enter to add another patient or enter -1 to go to main menu: \033[0m')
+
+    # clear_screen()
+    # main_screen()
+
+def receptionist_interface():
+    '''Receptionist interface for registering patients, assigning them
+     to doctors, and booking appointments
+     '''
+    options = ['Register new patient','Book appointment','Request prescription refill']
+    menu_selection = menu(options)
+
+    if menu_selection == '1' :
+        register_patient_interface()
+
+
 def main_screen():
     '''Main user interface'''
 
-    main_menu = input("\033[96mPlease select user:\033[0m\n\n\
-        \033[93m 1:\033[0m Receptionist\n\
-        \033[93m 2:\033[0m Nurse \n\
-        \033[93m 3:\033[0m Doctor\n\
-        \033[93m-1:\033[0m Anywhere to return to the main menu \n\
-        \033[93m 0:\033[0m Quit\n\n\
-        > ")
+    options=['Receptions','Nurse','Doctor']
+    main_menu = menu(options)
 
     if main_menu == '1':
-                
-        pass
+        receptionist_interface()
+        
 
-       
-       
     # elif main_menu == '2':
     #     clear_screen()
     #     add_patient_interface()
@@ -203,6 +338,7 @@ def main_screen():
 
         else:
             quit()
+
 
 
 def add_object_to_list(user,users_list):
