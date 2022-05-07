@@ -16,12 +16,12 @@ class TestClinic(unittest.TestCase):
 
      
         cls.users_list = []
-        cls.patient_1 = Patient('Rolland Manassa','3844 Yeager St','712-235-9932')
-        cls.patient_info = ['Rolland Manassa', '3844 Yeager St', '712-235-9932']
-        cls.users_list_1 =[['name', 'address', 'phone'], ['Rolland Manassa', '3844 Yeager St', '712-235-9932']]
-        cls.users_list_2=[['name', 'address', 'phone'], ['Rolland Manassa', '3844 Yeager St', '712-235-9932'],
+        cls.patient_1 = Patient('Rolland', 'Manassa','3844 Yeager St','712-235-9932')
+        cls.patient_info = ['Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','1']
+        cls.users_list_1 =[['File No.','First Name','Last Name', 'address', 'phone'], ['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932']]
+        cls.users_list_2=[['File No.','First Name','Last Name','address', 'phone'], ['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932'],
         ['Jude Basin','8069 Florian St','275-850-5092']]
-        cls.patient_2 = Patient('Jude Basin','8069 Florian St','275-850-5092')
+        cls.patient_2 = Patient('Jude','Basin','8069 Florian St','275-850-5092','2')
 
         cls.healthcare_professional_info= ['David Miller','1']
 
@@ -74,7 +74,7 @@ receptionist_1 = Receptionist('Susan','1')
 
 doctor_1 = Doctor("Mohammad Atieh",1)
 
-patient_tuple = 'Rami','Amman','5232208'
+patient_tuple = 'Rami','Atieh','Amman','5232208','1'
 patient_1 = Patient(*patient_tuple)
 
 appointment_1 = patient_1.request_appointment(receptionist_1,doctor_1)
