@@ -271,7 +271,7 @@ def register(registree):
             else:
                 registree.file_no = str(max(int(patient[0]) for patient in patients_list) + 1)
 
-        registree.obj_list.append(registree)
+        # registree.obj_list.append(registree)
 
     elif type(registree).__name__ =='Doctor':
         if not registree.employee_no:
@@ -280,7 +280,7 @@ def register(registree):
             else:
                 registree.employee_no = str(max(int(doctor[0]) for doctor in doctors_list) + 1)
 
-        registree.obj_list.append(registree)
+        # registree.obj_list.append(registree)
 
     else:
         if not registree.employee_no:
@@ -289,7 +289,7 @@ def register(registree):
             else:
                 registree.employee_no = str(max(int(nurse[0]) for nurse in nurses_list) + 1)
 
-        registree.obj_list.append(registree)
+        # registree.obj_list.append(registree)
         
     
 
