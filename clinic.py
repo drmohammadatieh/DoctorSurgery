@@ -20,8 +20,9 @@ prescriptions_list = []
 appointments_schedule = []
 today = datetime.datetime.today()
 
-patients_headers = ['File No','First','last','Address','Phone']
-doctors_headers =['Employee Number','Name']
+patients_headers = ['File No','First Name','Last Name','Address','Phone']
+doctors_headers =['Employee Number','Fist Name','Last Name']
+nurses_headers =['Employee Number','Fist Name','Last Name']
 
 test_patients = [
     ['John', 'Campbell', '01-12-2021', '12', '2'],
@@ -226,7 +227,7 @@ def menu(options):
         options_string += f"\033[93m {choice_number}:\033[0m {option}\n"
         choice_number +=1
     
-    options_string += "\033[93m-1:\033[0m Anywhere to return to the main menu \n\
+    options_string += "\033[93m-1:\033[0m To return to the previous menu \n\
 \033[93m 0:\033[0m Quit\n\n\
 > "
 
@@ -344,7 +345,6 @@ def registration_interface(registree_type,registrees_list):
     '''
 
     global patients_list, doctors_list, nurses_list
-
     new_registree = None
     
     def get_registration_fields(registree):
@@ -375,6 +375,9 @@ def registration_interface(registree_type,registrees_list):
                 registrees_list = patients_list
 
         registation_fields = get_registration_fields(new_registree)
+
+        registreeType= registree_type.lower()
+        print(f'Registering a new {registree_type}...\n')
         
         # Each header will be used as a key for the user input during adding patient information
         headers_list  = [field for field in registation_fields if field not in ['file_no','employee_no']]
@@ -385,7 +388,7 @@ def registration_interface(registree_type,registrees_list):
                 input_item = input(f'{header}: ').strip()
                 while not input_item.replace(' ','').isalpha() and input_item != '-1':
                     input_item = input(
-                        f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
+                        f'\033[91mplease enter a valid {header} or enter -1 to go to previous menu: \033[0m').strip()
 
             elif header == 'Phone':
 
@@ -393,15 +396,15 @@ def registration_interface(registree_type,registrees_list):
                 input_item = input(f'{header}: ').strip()
                 while not input_item.replace(' ','').isdigit() and input_item != '-1':
                     input_item = input(
-                        f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
+                        f'\033[91mplease enter a valid {header} or enter -1 to go to previous menu: \033[0m').strip()
             else:
                 input_item = input(f'{header}: ')
                 
             input_item.strip()
 
             if input_item == "-1":
-                clear_screen()
-                main_screen()
+                previous_menu = True
+                break
             else:
                 input_dict[header] =(input_item.lower().title())
 
@@ -413,13 +416,12 @@ def registration_interface(registree_type,registrees_list):
               
                 if duplicate:
                     print('') # A new line
-                    registreeType = registree_type.lower()
                     print(f'\033[91mThis {registreeType} is already registered with a record no {key}\033[0m')
                     new_registree = None
                     break
         
         # If not duplicate, register that regisgree and add to the appropriate list
-        if not duplicate:
+        if not duplicate and not previous_menu:
             print('') # A new line
             add_confirmation = input(
                 '\033[96mSave the information above (Y/N)?: \033[0m')
@@ -436,68 +438,52 @@ def registration_interface(registree_type,registrees_list):
                 print('\033[92mThe record was saved successfully\033[0m')
                 print('') # A new line
                 input_item = input(
-                    '\033[96mHit enter to add another patient or enter -1 to go to main menu: \033[0m')
+                    f'\033[96mHit enter to add {registreeType} patient or enter -1 to go to previous menu: \033[0m')
     
     # Save all objects data in the registree.obj_list to a csv file
     file_name = registree_type.lower() + 's_list'
     list_to_csv(registrees_list,file_name)
-
-    clear_screen()
-    main_screen()
 
 
 def edit_delete_interface():
     pass
 
 
-def search_name(search_string,list):
-    '''Search a list for matching search_string.\n
+def search_record_by_name(person_type,a_list):
+    '''Search a record from a list by first and/or last name'''
+
+    def search_name(search_string,a_list):
+        '''Search a list for matching search_string.\n
 search can be done by first name and/or last name partial or complete.
     '''
 
-    search_results_list = [] 
+        search_results_list = [] 
 
-    # If more than one search string:
-    if len(search_string.split(' ')) > 1:
+        # If more than one search string:
+        if len(search_string.split(' ')) > 1:
 
-        first_name, last_name = search_string.split(' ')
-        first_name = first_name.strip().lower()
-        last_name = last_name.strip().lower()
+            first_name, last_name = search_string.split(' ')
+            first_name = first_name.strip().lower()
+            last_name = last_name.strip().lower()
 
-        for patient in list:
-            if patient[1].lower().find(first_name) != -1 and patient[2].lower().find(last_name) != -1:
-                search_results_list.append(patient[0])
-            else:
-                continue
+            for person in list:
+                if person[1].lower().find(first_name) != -1 and person[2].lower().find(last_name) != -1:
+                    search_results_list.append(person[0])
+                else:
+                    continue
 
-    else:
-        search_string = search_string.strip().lower()
+        else:
+            search_string = search_string.strip().lower()
 
-        # loop through the follow_up_schedule and append file_no of patient records
-        # whom first_name or last_name matches the search_string
-        for patient in list:
-            if patient[1].lower().find(search_string) != -1 or patient[2].lower().find(search_string) != -1:
-                search_results_list.append(patient[0])
-            else:
-                continue
+            # loop through the list and append a record number for the records
+            # whom first_name or last_name matches the search_string
+            for person in a_list:
+                if person[1].lower().find(search_string) != -1 or person[2].lower().find(search_string) != -1:
+                    search_results_list.append(person[0])
+                else:
+                    continue
 
-    return search_results_list
-
-
-def generate_appointments_schedules():
-    '''Generates appointments schedules by the receptionist'''
-   
-    print_list( doctors_headers, doctors_list)
-
-
-
-def appointments_interface():
-    '''Interface for booking appointments for registered patients'''
-
-    global patients_list, selected_doctor
-   
-    print_list(patients_headers)
-    print('') # A new line
+        return search_results_list
 
     # Starts by searching a record
     search_string = input(
@@ -505,40 +491,110 @@ def appointments_interface():
 
     if search_string == '-1':
         clear_screen()
-        main_screen()
+        receptionist_interface()
 
-    # If a match/es is/are found, print the filtered_patients_list:
-    elif search_name(search_string,patients_list):
-        search_result = search_name(search_string,patients_list)
-        filtered_patients_list = [
-            patient for patient in patients_list if patient[0] in search_result]
+    # If a match/es is/are found, print a filtered list:
+    elif search_name(search_string,a_list):
+        search_result = search_name(search_string,a_list)
+        filteredlist = filtered_list(a_list,search_result)
         clear_screen()
-        print_list(patients_headers,filtered_patients_list)
+        if person_type == 'Patient':
+            print_list(patients_headers,filteredlist)
+        elif person_type == 'Doctor':
+            print_list(doctors_headers,filteredlist)
+        else:
+            print_list(nurses_list,filteredlist)
+
         print('') # A new line
 
-        mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
+     # If there is no match found:
+    else:
+        print('') # A new line
+        what_next = input(
+            '\033[91mNo match was found hit enter to try again or enter -1 to go to main menu: \033[0m')
+        print('') # A new line
+        if what_next == '-1':
+            clear_screen()
+            main_screen()
 
-        while mode_selection != '-1':
+        else:
+            appointments_interface()
 
-            file_no = ''
-            # If Book Appointment is selected:
+    
+def select_record(person_type,persons_list:list):
+    '''select record by file/employee number'''
+
+    file_no = input(
+        '\033[96mPlease select the record number for whom you want to schedule an appointment: \033[0m')
+    while not file_no.isdigit():
+        try:
+            int(file_no)
+        except:
+            file_no = input('\033[31mPlease enter a valid number: \033[0m')
+            
+        if file_no == '-1':
+            break
+
+        # Get the person_info that has the selected file/employee no.
+        person_info = persons_list[
+        int([person[0] for person in persons_list 
+        if person[0] == file_no][0])]
+
+    return person_info
+            
+
+def filtered_list(a_list: list,search_result:list):
+    '''Filters a list based on the search_name function result '''
+
+    filtered_list = [
+            record for record in a_list if record[0] in search_result]
+
+    return filtered_list
+
+def generate_appointments_schedules():
+    '''Generates appointments schedules by the receptionist'''
+   
+    print_list(doctors_headers, doctors_list)
+
+
+def appointments_interface():
+    '''Interface for booking appointments for registered patients'''
+
+    global patients_list, selected_doctor
+
+    def select_provider():
+        '''Schedule appointment with a doctor or a nurse'''
+
+        # Select appointment with a nurse or a doctor
+        options = ['Schedule appointment with a doctor','Schedule appointment with a nurse']
+        menu_selection = menu(options)
+
+        if menu_selection == '1' :
+            print_list (doctors_headers,doctors_list)
+
+        elif menu_selection == '2' :
+            print_list(nurses_headers, nurses_list)
+   
+    print_list(patients_headers)
+    print('') # A new line
+
+    #Search a record by nam
+    mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
+    while mode_selection != '-1':
+            # If first option is selected:
             if mode_selection == "1":
-                file_no = input(
-                    '\033[96mPlease select the file number for whom you want to schedule an appointment: \033[0m')
-                patient_info = patients_list[
-                    int([patient[0] for patient in patients_list 
-                    if patient[0] == file_no][0])]
-
+            
+                search_record_by_name('Patient',patients_list)
+                patient_info = select_record('Patient',patients_list)
                 selected_patient = list_to_object(Patient,patient_info) # The selected patient 
-                
-                appointment = Appointment('Regular',selected_doctor,selected_patient)
-                selected_doctor = Doctor('Mohammad','1')
-       
-     
-            # If Book Urgent Appointment is selected:
+                selected_provider = select_provider()
+
+         # If Book Urgent Appointment is selected:
             elif mode_selection == "2":
                 pass
 
+            elif mode_selection == "0":
+                quit_application()
             #If cancel appointment is selected:
             # elif mode_selection == "3":
             #     print('') # A new line
@@ -568,44 +624,43 @@ def appointments_interface():
                 mode_selection = input(
                     '\033[31mPlease enter a valid selection mode: \033[0m')
 
-        clear_screen()
-        main_screen()
+        # clear_screen()
+        # main_screen()
 
-    # If there is no match found:
-    else:
-        print('') # A new line
-        what_next = input(
-            '\033[91mNo match was found hit enter to try again or enter -1 to go to main menu: \033[0m')
-        print('') # A new line
-        if what_next == '-1':
-            clear_screen()
-            main_screen()
-
-        else:
-            appointments_interface()
-
+    # appointment = Appointment('Regular',selected_doctor,selected_patient)
+    # selected_doctor = Doctor('Mohammad','1')
+       
+    
 def receptionist_interface():
     '''Receptionist interface for registering patients_list, assigning them
      to doctors_list, and booking appointments
      '''
-    options = ['Register Patients','Book Appointment / Request Repeat','Edit/Delete Patients','Generate Appointments Schedules']
-    menu_selection = menu(options)
+   
+    while True:
 
-    if menu_selection == '1' :
-        registration_interface('Patient',patients_list)
-
-    if menu_selection == '2' :
-        appointments_interface()
-
-    if menu_selection == '3' :
-        edit_delete_interface()
-
-    if menu_selection == '4' :
-        generate_appointments_schedules()
-    
-    elif  menu_selection == '-1' :
         clear_screen()
-        main_screen()
+        options = ['Register Patients','Book Appointment / Request Repeat','Edit/Delete Patients','Generate Appointments Schedules']
+        menu_selection = menu(options)
+
+        if menu_selection == '1' :
+            clear_screen()
+            registration_interface('Patient',patients_list)
+
+        if menu_selection == '2' :
+            appointments_interface()
+
+        if menu_selection == '3' :
+            edit_delete_interface()
+
+        if menu_selection == '4' :
+            generate_appointments_schedules()
+        
+        elif  menu_selection == '-1' :
+            break
+
+    clear_screen()
+    main_screen()
+
 
 def register_doctors():
     pass
@@ -617,14 +672,35 @@ def register_nurses():
 def administration_interface():
     '''Administration interface for adding healthcare providers to the clinic'''
 
-    options = ['Add doctors to the clinic','Add nurses to the clinic']
-    menu_selection = menu(options)
+    while True:
 
-    if menu_selection == '1' :
-        registration_interface('Doctor',doctors_list)
+        options = ['View Registered Doctors/Nurses','Add doctors to the clinic','Add nurses to the clinic']
+        menu_selection = menu(options)
 
-    if menu_selection == '2' :
-        registration_interface('Nurse',doctors_list)
+        if menu_selection == '1':
+            
+            print('Registered Doctors\n')
+            print_list(doctors_headers,doctors_list)
+            print('\nRegistered Nurses\n')
+            print_list(doctors_headers,doctors_list)
+            administration_interface()
+                
+        elif menu_selection == '2' :
+            clear_screen()
+            registration_interface('Doctor',doctors_list)
+
+        elif menu_selection == '3' :
+            clear_screen()
+            registration_interface('Nurse',doctors_list)
+
+        elif menu_selection == '-1':
+            break
+
+        else:
+            quit_application()
+
+    clear_screen()
+    main_screen()
 
 
 def objects_to_list(object):
@@ -686,6 +762,13 @@ def import_from_cv():
                 if row:
                     registree_list.append(row)    
 
+def quit_application():
+    '''Clears screen, print Good Bye!
+    and quit the application
+    '''
+    clear_screen()
+    print('\033[92mGood Bye!\033[0m')
+    quit()
 
 def clear_screen():
     '''Clears the command line interface.'''
@@ -707,64 +790,14 @@ def main_screen():
        main_screen()
    
     elif main_menu == '2':
-        clear_screen()
         receptionist_interface()
 
     elif main_menu == '5':
         clear_screen()
         administration_interface()
-        
-
-    # elif main_menu == '2':
-    #     clear_screen()
-    #     add_patient_interface()
-    #     export_to_cv()
-    #     clear_screen()
-    #     main_screen()
-
-    # elif main_menu == '3':
-    #     clear_screen()
-    #     add_test_patients_list()
-    #     export_to_cv() 
-    #     print('') # A new line
-    #     go_to_main_screen = input(
-    #         '\033[96mHit enter to view schedule or enter -1 to go to main menu\033[0m: ')
-
-    #     if go_to_main_screen == '':
-    #         clear_screen()
-    #         print_follow_up_schedule()
-    #         print('') # A new line
-    #         go_to_main_screen = input(
-    #             '\033[96mHit enter to return to main screen\033[0m: ')
-    #         if go_to_main_screen.isascii():
-    #             clear_screen()
-    #             main_screen()
-    #     else:
-    #         clear_screen()
-    #         main_screen()
-
-    # elif main_menu == '4':
-    #     edit_delete_interface()
-    #     export_to_cv()
-    #     clear_screen()
-    #     main_screen()
-
-    # elif main_menu == '5':
-    #     clear_screen()
-    #     print_follow_up_schedule()
-    #     print('') # A new line
-    #     sort_interface()
 
     elif main_menu in ['0', '-1']:
-        clear_screen()
-        print('\033[92mGood Bye!\033[0m')
-        quit()
-
-    # elif main_menu == '6':
-    #     clear_screen()
-    #     print_follow_up_schedule()
-    #     print('') # A new line
-    #     check_out_and_follow_interface()
+        quit_application()
 
     else:
         
