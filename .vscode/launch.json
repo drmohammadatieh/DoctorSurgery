@@ -10,7 +10,8 @@
             "request": "launch",
             "program": "/Users/Mohammad/Library/CloudStorage/OneDrive-just.edu.jo/CS/Programming/Python Projects/UoEO/DoctorSurgery/clinic.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+         
         }
     ]
 }

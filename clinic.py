@@ -415,7 +415,6 @@ def registration_interface(registree_type,registrees_list):
                     print('') # A new line
                     registreeType = registree_type.lower()
                     print(f'\033[91mThis {registreeType} is already registered with a record no {key}\033[0m')
-                    # del new_registree
                     new_registree = None
                     break
         
@@ -433,97 +432,18 @@ def registration_interface(registree_type,registrees_list):
 
                 register(new_registree)
                 registrees_list.append((objects_to_list(new_registree)))
-                # Save data to csv file
-                file_name = registree_type.lower() + 's_list'
-                list_to_csv(registrees_list,file_name)
+                new_registree = None    
                 print('\033[92mThe record was saved successfully\033[0m')
                 print('') # A new line
                 input_item = input(
                     '\033[96mHit enter to add another patient or enter -1 to go to main menu: \033[0m')
     
-   
-    
-    
+    # Save all objects data in the registree.obj_list to a csv file
+    file_name = registree_type.lower() + 's_list'
+    list_to_csv(registrees_list,file_name)
 
     clear_screen()
     main_screen()
-
-
-# def register_patient_interface():
-#     '''Interface for registering patients to the clinic.'''
-
-#     global patients_list
-#     new_patient = Patient('','','') # Initializes a new patient
-#     input_item = ''
-#     while input_item != '-1':
-
-#         # clear_screen()
-#         duplicate = False  # To store the value of the check_duplicate function
-#         input_dict = {} # Stores patient data from CLI input
-        
-#         # Each header will be used as a key for the user input during adding patient information
-#         headers_list  = ['first_name','last_name', 'address','phone']
-#         for header in headers_list:
-#             header = header.replace('_', ' ').capitalize()
-#             if header not in ['Address' ,'Phone']:
-        
-#                 input_item = input(f'{header}: ').strip()
-#                 while not input_item.replace(' ','').isalpha() and input_item != '-1':
-#                     input_item = input(
-#                         f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
-
-#             elif header == 'Phone':
-
-#                 # Make sure the entered phone number contains only digits
-#                 input_item = input(f'{header}: ').strip()
-#                 while not input_item.replace(' ','').isdigit() and input_item != '-1':
-#                     input_item = input(
-#                         f'\033[91mplease enter a valid {header} or enter -1 to go to main menu: \033[0m').strip()
-#             else:
-#                 input_item = input(f'{header}: ')
-                
-#             input_item.strip()
-
-#             if input_item == "-1":
-#                 clear_screen()
-#                 main_screen()
-#             else:
-#                 input_dict[header] =(input_item.lower().title())
-
-#         # Check if there is duplicate name with the same first and last name
-#             if header == 'Last name':
-#                 new_patient = Patient('',*list(input_dict.values()))
-#                 # duplicate, file_no = chenew_patient.check_duplicate()
-#                 duplicate, file_no = check_duplicate(new_patient,patients_list)
-              
-#                 if duplicate:
-#                     print('') # A new line
-#                     what_next = input(f'\033[91mThis patient is already registered with a file no: {file_no}\033[0m')
-                    
-#                     if what_next == '':
-#                         input_dict.clear()
-#                         break
-        
-#         # If not duplicate, register that patient and add to patients_list
-#         if not duplicate:
-#             print('') # A new line
-#             add_confirmation = input(
-#                 '\033[96mSave the information above (Y/N)?: \033[0m')
-#             print('') # A new line
-
-#             if add_confirmation.lower() == 'y':
-    
-#                 new_patient.address, new_patient.phone = input_dict['Address'],input_dict['Phone']
-#                 new_patient.register(duplicate)
-#                 patients_list += objects_to_list(Patient.obj_list)
-#                 list_to_csv(patients_list,'patients_list')
-#                 print('\033[92mThe record was saved successfully\033[0m')
-#                 print('') # A new line
-#                 input_item = input(
-#                     '\033[96mHit enter to add another patient or enter -1 to go to main menu: \033[0m')
-
-#     clear_screen()
-#     main_screen()
 
 
 def edit_delete_interface():
