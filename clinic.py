@@ -1,10 +1,7 @@
-from copy import deepcopy
-from dataclasses import dataclass
+# imports
 import datetime
 import os
 import csv
-from this import d
-from typing import Type
 import test_clinic
 from test_clinic import *
 import glob
@@ -22,7 +19,7 @@ doctors_appointments = {}
 nurses_appointments = {}
 today = datetime.datetime.today()
 
-patients_headers = ['File No','First Name','Last Name','Address','Phone']
+patients_headers = ['File No','First Name','Last Name','Address','Phone','Doctor']
 doctors_headers =['Employee Number','Fist Name','Last Name']
 nurses_headers =['Employee Number','Fist Name','Last Name']
 
@@ -36,46 +33,63 @@ test_patients = [
 
 
 class DuplicateRecord(Exception):
-
+    
     pass
 
 class Employee():
-
+    '''Creates an Employee that is a superclass for HealthCareProfessional and Receptionist
+    Attributes: employee_no: str,first_name: str,last_name:str
+    '''
     obj_list = [] # Stores employees as objects
 
-    def __init__(self,employee_no,first_name,last_name) -> None:
+    def __init__(self,employee_no: str,first_name: str,last_name:str) -> None:
         self.employee_no= employee_no
         self.first_name = first_name
         self.last_name = last_name
 
+    def __str__(self):    
+        return self.first_name + ' ' + self.last_name
 
-class HealthCareProfessional(Employee):
-
-    def consultation(self):
-        pass
-
-    def __str__(self):
+    def __repr__(self):
         return self.first_name + ' ' + self.last_name
 
 
-class Doctor(HealthCareProfessional):
+class HealthCareProfessional(Employee):
+    '''Creates a HealthCareProfessional that inherits from Employee
+    Inherited attributes: employee_no: str,first_name: str,last_name:str
+    Methods: consultation()
+    '''
+    def consultation(self):
+        pass
 
-    
+   
+class Doctor(HealthCareProfessional):    
+    '''Creates a Doctor that inherits from HealthCareProfessional
+    Inherited attributes: employee_no: str,first_name: str,last_name:str
+    Inherited Methods: consultation()
+    Methods: issue_prescription()
+    '''
     def issue_prescription(self):
         pass
 
 
 class Nurse(HealthCareProfessional):
-
+    '''Creates a Nurse that inherits from HealthCareProfessional
+    Inherited attributes: employee_no: str,first_name: str,last_name:str
+    Inherited Methods: consultation()
+    '''
     pass
 
 
 class Patient():
-
+    '''Creates a patient object
+    Attributes: file_no: str,first_name: str,last_name: str, address: str ='',phone :str ='',doctor: str=''
+    methods: request_appointment(), request_repeat()
+    '''
     global patients_list # access the global patients_list that conain all patients in list format
     obj_list = [] # Stores patients as objects
 
-    def __init__(self,file_no,first_name,last_name, address='',phone='',doctor='') -> None:
+    def __init__(self,file_no: str,first_name: str,last_name: str, address: str ='',phone :str ='',doctor: str='') -> None:
 
         self.file_no = file_no
         self.first_name = first_name
@@ -88,23 +102,24 @@ class Patient():
 
         return self.first_name + ' ' + self.last_name
 
-    def request_repeat(self):
-
-        refill = Prescription("Amoxicillin",self,self.available_doctor,1,"500 mg 1 x 2 x 7")
-
-        return refill
-        
-
     def request_appointment(self,receptionist):
 
         request = receptionist.make_appointment(self)
 
         return request
 
+    def request_repeat(self):
 
+        refill = Prescription("Amoxicillin",self,self.available_doctor,1,"500 mg 1 x 2 x 7")
+
+        return refill
+
+        
 class Prescription():
-
-    def __init__(self,type,patient,doctor,quantity,dosage) -> None:
+    '''Creates a Prescription object
+Attributes: type: str,patient: Patient,doctor: Doctor,quantity: int,dosage: float
+    '''
+    def __init__(self,type: str,patient: Patient,doctor: Doctor,quantity: int,dosage: float) -> None:
 
         self.type = type
         self.patient = patient
@@ -118,8 +133,10 @@ class Prescription():
 
 
 class Appointment():
-
-    def __init__(self, urgent, staff, patient, date, time) -> None:
+    '''Creates an appointment object
+    Attributes: urgent:bool, staff:HealthCareProfessional, patient: Patient, date: datetime.date, time: datetime.time
+    '''
+    def __init__(self, urgent:bool, staff:HealthCareProfessional, patient: Patient, date: datetime.date, time: datetime.time) -> None:
 
         self.urgent = urgent
         self.staff = staff
@@ -127,12 +144,17 @@ class Appointment():
         self.date = date
         self.time = time
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f'(Urgent = {self.urgent}) appointment for {self.patient.__str__()} on {self.date} at {self.time} (provider = {self.staff.__str__()})'
 
+    
 
 class Receptionist(Employee):
-
+    '''Creates a receptionist object
+    Attributes: patient,nurse = False,urgent = False
+    Inherited attributes: 
+    methods: make_appointment(), cancel_appointment()
+    '''
     def make_appointment(self,patient,nurse = False,urgent = False):
         if urgent:
             urgent_appointment = AppointmentSchedule.make_urgent_appointment(patient)
@@ -147,7 +169,10 @@ class Receptionist(Employee):
 
 
 class AppointmentSchedule():
-
+    '''Creates an AppointmentSchedule object
+    Attributes: provider:HealthCareProfessional,no_of_months:int,hours_per_day:int
+    methods: make_appointment(), cancel_appointment()
+    '''
     global today
     global doctors_appointments
     obj_list = [] # Stores appointments as objects
@@ -165,27 +190,45 @@ class AppointmentSchedule():
         start_date = start_time = today.replace(second=0,microsecond=0)
         end_time = start_time + datetime.timedelta(hours =8)
         end_date = start_date + datetime.timedelta(days = self.no_of_months * 30)
-
+        index = 0
         while start_date < end_date:
             if start_date.weekday() not in [5,6]:
                 while start_time < end_time:
-                    schedule.append([start_time.date(),start_time.time(),''])
+                    schedule.append([index,start_time.date(),start_time.time(),'','','',''])
                     start_time += datetime.timedelta(minutes=30)
+                    index +=1
            
             start_date += datetime.timedelta(days=1)
             start_time = datetime.datetime(start_date.year,start_date.month,start_date.day,8,0,0)
             end_time = start_time + datetime.timedelta(hours =8)
                  
-        doctors_appointments[f'{self.provider.__str__()}'] = schedule
+        doctors_appointments[f'{self.provider}'] = schedule
 
         for provider in doctors_appointments.keys():
             list_to_csv(doctors_appointments[provider],f'appointments_schedule - Dr. {provider}')
   
+    @classmethod
+    def add_appointment(cls,appointment: Appointment, index:int):
+        '''Adds a confirmed appointment to the doctors_appointments schedule'''
+        selected_provider = appointment.staff
+        selected_patient = appointment.patient
+        if isinstance(selected_provider,Doctor):
+            schedule = doctors_appointments
+        else:
+            schedule = nurses_appointments
+        
+        for provider in schedule:
+            if provider == str(selected_provider):
+                for appointment in schedule[provider]:
+                    if int(appointment[0]) == index:
+                        schedule[provider][index][3] = selected_patient.file_no
+                        schedule[provider][index][4] = selected_patient
 
-    def add_appointment(cls,patient,doctor,date_time):
-        pass
+        # Modify the appointments_schedule - Dr. <provider>.csv
+        list_to_csv(schedule[str(selected_provider)],f'appointments_schedule - Dr. {str(selected_provider)}')
 
-    def cancel_appointment(cls,patient,doctor,datetime):
+    @classmethod
+    def cancel_appointment(cls,appointment: Appointment):
         pass
 
     @classmethod
@@ -199,11 +242,11 @@ class AppointmentSchedule():
         if nurse:
             for nurse in nurses_list:
                 for appointment in nurses_appointments[nurse]:
-                            if appointment[2]=='':
-                                appointment = appointment[0],appointment[1]
+                            if appointment[3]=='':
+                                fist_available = appointment[1],appointment[2]
                                 found = True
-                                selected_nurse = objects_to_list(Nurse,nurse)
-                                return Appointment(selected_nurse,selected_patient,appointment[0],appointment[1],urgent= False), index
+                                selected_nurse = object_to_list(Nurse,nurse)
+                                return Appointment(False, selected_nurse,selected_patient,fist_available[1],fist_available[2]), index
 
                             index += 1    
                     # If the appointment requested with any provider        
@@ -212,16 +255,14 @@ class AppointmentSchedule():
                 return None, selected_nurse
 
         else:
-
             for doctor in doctors_appointments:
                 # If the appointment requested with a specific provider
-            
-                if doctor == selected_doctor.__str__():
+                if doctor == str(selected_doctor):
                         for appointment in doctors_appointments[doctor]:
-                            if appointment[2]=='':
-                                appointment = appointment[0],appointment[1]
+                            if appointment[3]=='':
+                                fist_available = appointment[1],appointment[2]
                                 found = True
-                                return Appointment(False, selected_doctor,selected_patient,appointment[0],appointment[1]), index
+                                return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
                             index += 1 
                     # If the appointment requested with any provider        
                 
@@ -233,7 +274,7 @@ class AppointmentSchedule():
 
         selected_doctor = get_doctor(selected_patient)
         date = today.replace(second=0,microsecond=0)
-        time = doctors_appointments[selected_doctor.__str__()][0][1]
+        time = doctors_appointments[selected_doctor][0][1]
 
         
         if today.weekday() == 5:
@@ -256,7 +297,7 @@ class AppointmentSchedule():
 
 ### Functions ###
 
-def print_list(headers, list = patients_list,):
+def print_list(headers, list = patients_list):
     '''Prints a list or a schedule in a table format.'''
 
     # Print the list headers
@@ -479,7 +520,7 @@ def registration_interface(registree_type,registrees_list):
                          input_dict['Address'],input_dict['Phone'],input_dict['Doctor']
 
                 register(new_registree)
-                registrees_list.append((objects_to_list(new_registree)))
+                registrees_list.append((object_to_list(new_registree)))
                 new_registree = None    
                 print('\033[92mThe record was saved successfully\033[0m')
                 print('') # A new line
@@ -567,7 +608,7 @@ search can be done by first name and/or last name partial or complete.
             appointments_interface()
 
     
-def select_record(type:Type,persons_list:list):
+def select_record(type: object, persons_list:list):
     '''select record by file/employee number'''
     
     file_no = input(
@@ -603,10 +644,12 @@ def generate_appointments_schedules():
     print_list(doctors_headers, doctors_list)
 
 
-    doctor = Doctor('1','Melanie','Alazzam')
+    doctor_1 = Doctor('1','Melanie','Alazzam')
     doctor_2 = Doctor('2','Mohammad','Atieh')
-    appointments_schedule = AppointmentSchedule(doctor,1,5)
-    appointments_schedule.generate_slots()
+    appointments_schedule_1 = AppointmentSchedule(doctor_1,1,5)
+    appointments_schedule_1.generate_slots()
+    appointments_schedule_2 = AppointmentSchedule(doctor_2,1,5)
+    appointments_schedule_2.generate_slots()
 
 
 
@@ -615,25 +658,6 @@ def appointments_interface():
 
     global patients_list, selected_doctor
 
-    def select_provider():
-        '''Schedule appointment with a doctor or a nurse'''
-
-        # Select appointment with a nurse or a doctor
-        options = ['Schedule appointment with a doctor','Schedule appointment with a nurse']
-        menu_selection = menu(options)
-
-        provider_type = ''
-        if menu_selection == '1' :
-            print_list (doctors_headers,doctors_list)
-            selected_provider = select_record(Doctor,doctors_list)
-                
-        elif menu_selection == '2' :
-            print_list(nurses_headers, nurses_list)
-            selected_provider = select_record(Nurse,nurses_list)
-            
-        return selected_provider
-
-   
     print_list(patients_headers)
     print('') # A new line
 
@@ -642,13 +666,20 @@ def appointments_interface():
     # Options after selecting the patient
     mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
     while mode_selection != '-1':
-            # If first option is selected:
+            # To book regular appointment (first available):
             if mode_selection == "1":
                 selected_patient = select_record(Patient,patients_list)
-                selected_provider = select_provider()
+                # selected_provider = select_provider()
+                first_available = receptionist.make_appointment(selected_patient)
+                print(f'First available appointment is on {first_available[0].date} at {first_available[0].time}\n')
+                confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
+                if confirm_appointment == '':
+                    AppointmentSchedule.add_appointment(*first_available)
+
 
                 
-         # If Book Urgent Appointment is selected:
+         # To book ugent Appointment (same day or earliest even
+         # if no space is available on the regular schedule):
             elif mode_selection == "2":
                 pass
 
@@ -707,7 +738,7 @@ def receptionist_interface():
     while True:
 
         clear_screen()
-        options = ['Register Patients','Book Appointment / Request Repeat','Edit/Delete Patients','Generate Appointments Schedules','TEST APPOINTMENT']
+        options = ['Register Patients','Book Appointment / Request Repeat','Edit/Delete Patients','Generate Appointments Schedules']
         menu_selection = menu(options)
 
         if menu_selection == '1' :
@@ -723,13 +754,6 @@ def receptionist_interface():
         if menu_selection == '4' :
             generate_appointments_schedules()
 
-        if menu_selection == '5' :
-            selected_patient = Patient('1','Mohammad','Atieh','','','Melanie Alazzam')
-            selected_patient.request_appointment(receptionist)
-            print(AppointmentSchedule.find_next_available(selected_patient)[0].__str__(),AppointmentSchedule.find_next_available(selected_patient)[1])
-            print(AppointmentSchedule.make_urgent_appointment(selected_patient)[0].__str__(),AppointmentSchedule.make_urgent_appointment(selected_patient)[1])
-            input('Test checkpoint')
-        
         elif  menu_selection == '-1' :
             break
 
@@ -778,7 +802,7 @@ def administration_interface():
     main_screen()
 
 
-def objects_to_list(object):
+def object_to_list(object):
     '''Saves object data to a string list
     to facilitate exporting to a csv file.
     '''
