@@ -16,12 +16,14 @@ class TestClinic(unittest.TestCase):
 
      
         cls.users_list = []
-        cls.patient_1 = clinic.Patient('1','Rolland', 'Manassa','3844 Yeager St','712-235-9932')
-        cls.patient_2 = clinic.Patient('2','Jude','Basin','8069 Florian St','275-850-5092')
-        cls.patient_info = ['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932']
-        cls.patients_list_1 =[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932']]
-        cls.patients_list_2=[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932'],
-        ['2','Jude', 'Basin','8069 Florian St','275-850-5092']]
+        cls.patient_1_info = ['1','Rolland', 'Manassa','3844 Yeager St','712-235-9932','Doctor Name']
+        cls.patient_2_info = ['2','Jude','Basin','8069 Florian St','275-850-5092','Doctor Name']
+        cls.patient_1 = clinic.Patient('1','Rolland', 'Manassa','3844 Yeager St','712-235-9932','Doctor Name')
+        cls.patient_2 = clinic.Patient('2','Jude','Basin','8069 Florian St','275-850-5092','Doctor Name')
+        cls.patient_info = ['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','Doctor Name']
+        cls.patients_list_1 =[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','Doctor Name']]
+        cls.patients_list_2=[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','Doctor Name'],
+        ['2','Jude', 'Basin','8069 Florian St','275-850-5092','Doctor Name']]
        
 
         cls.healthcare_professional_info= ['1','David' ,'Miller']
@@ -30,26 +32,26 @@ class TestClinic(unittest.TestCase):
     def test_register_patient(self):
         '''Tests the process of registering a patient'''
 
-        Patient.patients_obj_list.clear()
         new_patient_1 = self.patient_1
-        new_patient_1.register(False)
         new_patient_2 = self.patient_2
-        new_patient_2.register(False)
-        self.assertEqual(Patient.patients_obj_list, [new_patient_1,new_patient_2])
+        register(new_patient_1)
+        register(new_patient_2)
+        self.assertEqual(self.patient_1_info, list[vars(new_patient_1).values()])
+        print(list[vars(new_patient_1).values()])
+        self.assertEqual(self.patient_2_info, list[vars(new_patient_2).values()])
 
 
     def test_register_duplicate_patient(self):
         '''Tests the process of registering a patient'''
 
-        Patient.patients_obj_list.clear()
+        Patient.obj_list.clear()
         new_patient_1 = self.patient_1
-        new_patient_1.register(False)
-        new_patient_2 = self.patient_1
-        with self.assertRaises(DuplicateFileNumber):
-            self.patient_2.register(True)
+        register(new_patient_1)
+        register(new_patient_2)
+     
+        with self.assertRaises(DuplicateRecord):
+           register(new_patient_2)
         
-              
-
     def test_save_data_to_list(self):
         '''Tests saving object data to a list'''
 
