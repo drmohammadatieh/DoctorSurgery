@@ -544,7 +544,7 @@ def search_record_by_name(person_type,persons_list):
 search can be done by first name and/or last name partial or complete.
     '''
 
-        search_results_list = [] 
+        search_result = [] 
 
         # If more than one search string:
         if len(search_string.split(' ')) > 1:
@@ -555,7 +555,7 @@ search can be done by first name and/or last name partial or complete.
 
             for person in persons_list:
                 if person[1].lower().find(first_name) != -1 and person[2].lower().find(last_name) != -1:
-                    search_results_list.append(person[0])
+                    search_result.append(person[0])
                 else:
                     continue
 
@@ -566,11 +566,11 @@ search can be done by first name and/or last name partial or complete.
             # whom first_name or last_name matches the search_string
             for person in persons_list:
                 if person[1].lower().find(search_string) != -1 or person[2].lower().find(search_string) != -1:
-                    search_results_list.append(person[0])
+                    search_result.append(person[0])
                 else:
                     continue
 
-        return search_results_list
+        return search_result
 
     # Starts by searching a record
     search_string = input(
@@ -594,6 +594,8 @@ search can be done by first name and/or last name partial or complete.
 
         print('') # A new line
 
+        return filteredlist
+
      # If there is no match found:
     else:
         print('') # A new line
@@ -612,20 +614,25 @@ def select_record(type: object, persons_list:list):
     '''select record by file/employee number'''
     
     file_no = input(
-        '\033[96mPlease select using the record number: \033[0m')
+        '\033[96mSelect a record number: \033[0m')
     while not file_no.isdigit():
         try:
             int(file_no)
         except:
             file_no = input('\033[31mPlease enter a valid number: \033[0m')
-            
-        if file_no == '-1':
-            break
+        
+    while file_no not in [person[0] for person in persons_list]:
+        file_no = input('\033[31mPlease enter one of the record numbers above: \033[0m')
 
-        # Get the person_info that has the selected file/employee no.
+        if file_no == '-1':
+            return None
+
+    # Get the person_info that has the selected file/employee no.
     person_info = persons_list[
     int([person[0] for person in persons_list
     if person[0] == file_no][0])]
+
+
 
     return list_to_object(type,person_info)
             
@@ -662,22 +669,25 @@ def appointments_interface():
     print('') # A new line
 
     # Search a record by name
-    search_record_by_name('Patient',patients_list)
+    search_result = search_record_by_name('Patient',patients_list)
+    selected_patient = select_record(Patient,search_result)
     # Options after selecting the patient
-    mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
+    while selected_patient != None:
+         mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
+    
+    if selected_patient == None:
+        appointments_interface()
     while mode_selection != '-1':
             # To book regular appointment (first available):
             if mode_selection == "1":
-                selected_patient = select_record(Patient,patients_list)
-                # selected_provider = select_provider()
                 first_available = receptionist.make_appointment(selected_patient)
                 print(f'First available appointment is on {first_available[0].date} at {first_available[0].time}\n')
                 confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
                 if confirm_appointment == '':
                     AppointmentSchedule.add_appointment(*first_available)
+                    break
 
 
-                
          # To book ugent Appointment (same day or earliest even
          # if no space is available on the regular schedule):
             elif mode_selection == "2":
@@ -685,24 +695,7 @@ def appointments_interface():
 
             elif mode_selection == "0":
                 quit_application()
-            #If cancel appointment is selected:
-            # elif mode_selection == "3":
-            #     print('') # A new line
-                # file_no = input(
-            #         '\033[96mPlease enter the number of the file you want to edit: \033[0m')
-            #     if file_no == "-1":
-            #         break
-            #     while (not file_no.strip().isdigit()
-            #            or file_no not in search_result):
-            #         print('') # A new line
-            #         file_no = input(
-            #             '\033[91mPlease enter one of the file numbers above or enter -1 to go to main screen\033[0m: ')
-            #         if file_no == "-1":
-            #             clear_screen()
-            #             main_screen()
-
-            #     print('') # A new line
-            #     edit_patient(file_no.strip())
+            
 
             elif mode_selection == '':
                 clear_screen()
