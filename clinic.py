@@ -1,4 +1,5 @@
 # imports
+import copy
 import datetime
 import os
 import csv
@@ -188,14 +189,16 @@ class AppointmentSchedule():
         the no_of_months and the hours_per_day attributes
         '''
         schedule = [] 
-        start_date = start_time = now.replace(hour = 8, minute = 0,second = 0, microsecond=0)
+        start_date = start_time = today.replace(hour = 8, minute = 0,second = 0, microsecond=0)
+        start_time_fixed = str(start_time.time())[:-3]
         end_time = start_time + datetime.timedelta(hours = 8)
         end_date = start_date + datetime.timedelta(days = self.no_of_months * 30)
         index = 0
         while start_date < end_date:
             if start_date.weekday() not in [5,6]:
                 while start_time < end_time:
-                    schedule.append([index,start_time.date(),str(start_time.time())[:-3],'','','',''])
+                    m_d_y_date_format = start_time.strftime('%d-%m-%Y')
+                    schedule.append([index,m_d_y_date_format,str(start_time.time())[:-3],'','','','',start_time_fixed,self.hours_per_day])
                     start_time += datetime.timedelta(minutes=30)
                     index +=1
            
@@ -277,7 +280,7 @@ class AppointmentSchedule():
                         for appointment in doctors_appointments[doctor]:
                             appointment_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
                             appointment_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y')
-                            if not appointment_time < now and :
+                            if not appointment_time < now:
                                 if appointment[3]=='':
                                     fist_available = appointment[1],appointment[2]
                                     found = True
