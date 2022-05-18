@@ -3,6 +3,7 @@ import copy
 import datetime
 import os
 import csv
+from xmlrpc.client import DateTime
 import test_clinic
 from test_clinic import *
 import glob
@@ -17,13 +18,17 @@ nurses_list = [] # Stores nurses data in a list format
 receptionist = None # Stores the default receptionist that is initialized when the application runs
 prescriptions_list = []
 doctors_appointments = {}
+doctors_working_hours = []
 nurses_appointments = {}
-today = datetime.datetime.today()
-now = datetime.datetime.now().time()
+nurses_working_hours = []
+skip_index = 0
+today = datetime.datetime.today().date()
+now = datetime.datetime.now().time().replace(second=0,microsecond=0)
 
-patients_headers = ['File No','First Name','Last Name','Address','Phone','Doctor']
+patients_headers = ['File No.','First Name','Last Name','Address','Phone','Doctor']
 doctors_headers =['Employee Number','Fist Name','Last Name']
 nurses_headers =['Employee Number','Fist Name','Last Name']
+appointments_headers = ['Appointment No.','Date','Time','File No.',"Patient's Name","(Urgent) File No.",'(Urgent) Name']
 
 test_patients = [
     ['John', 'Campbell', '01-12-2021', '12', '2'],
@@ -162,12 +167,19 @@ class Receptionist(Employee):
             urgent_appointment = AppointmentSchedule.make_urgent_appointment(patient)
             return  urgent_appointment
         else:
-            first_available = AppointmentSchedule.find_next_available(patient,nurse = False)
-            return first_available
+            next_available = AppointmentSchedule.find_next_available(patient,nurse = False)
+            return next_available
 
 
     def cancel_appointment(self):
-        pass
+        reserved_appointments = []
+        for provider in doctors_appointments:
+            for appointment in doctors_appointments[provider]:
+                if appointment[3] !='':
+                    reserved_appointments.append(appointment)
+
+        print_list(appointments_headers,reserved_appointments)
+
 
 
 class AppointmentSchedule():
@@ -175,22 +187,23 @@ class AppointmentSchedule():
     Attributes: provider:HealthCareProfessional,no_of_months:int,hours_per_day:int
     methods: make_appointment(), cancel_appointment()
     '''
-    global today
-    global doctors_appointments
+    global today, doctors_appointments, doctors_working_hours
     obj_list = [] # Stores appointments as objects
 
     def __init__(self,provider:HealthCareProfessional,no_of_months:int,hours_per_day:int) -> None:
         self.provider = provider
         self.no_of_months = no_of_months
         self.hours_per_day = hours_per_day if hours_per_day <= 12 else 12 # Maximum working hours are from 8:00 am to 8:00 pm
+    
 
     def generate_slots(self):
         '''Generates 30-minute appointments slots according to 
         the no_of_months and the hours_per_day attributes
         '''
         schedule = [] 
-        start_date = start_time = today.replace(hour = 8, minute = 0,second = 0, microsecond=0)
-        start_time_fixed = str(start_time.time())[:-3]
+        start_date = today
+        start_time = datetime.datetime.today().replace(hour = 8, minute =0,second=0,microsecond=0)
+        start_time_fixed = str(start_time)[:-3]
         end_time = start_time + datetime.timedelta(hours = 8)
         end_date = start_date + datetime.timedelta(days = self.no_of_months * 30)
         index = 0
@@ -198,7 +211,7 @@ class AppointmentSchedule():
             if start_date.weekday() not in [5,6]:
                 while start_time < end_time:
                     m_d_y_date_format = start_time.strftime('%d-%m-%Y')
-                    schedule.append([index,m_d_y_date_format,str(start_time.time())[:-3],'','','','',start_time_fixed,self.hours_per_day])
+                    schedule.append([index,m_d_y_date_format,str(start_time.time())[:-3],'','','',''])
                     start_time += datetime.timedelta(minutes=30)
                     index +=1
            
@@ -207,10 +220,18 @@ class AppointmentSchedule():
             end_time = start_time + datetime.timedelta(hours =8)
                  
         doctors_appointments[f'{self.provider}'] = schedule
+        doctors_working_hours.append([f'{self.provider}',start_time_fixed,str(self.hours_per_day)])
 
         for provider in doctors_appointments.keys():
             list_to_csv(doctors_appointments[provider],f'appointments_schedule - Dr. {provider}')
-  
+
+        # Save doctors working hours to a csv file
+        file = os.getcwd() + '/doctors_working_hours.csv'
+        with open(file,'w') as f:
+            writer = csv.writer(f)
+            for item in doctors_working_hours:
+                writer.writerow(item)
+           
     @classmethod
     def add_appointment(cls,appointment: Appointment, index:int):
         '''Adds a confirmed appointment to the doctors_appointments schedule'''
@@ -249,46 +270,56 @@ class AppointmentSchedule():
 
     @classmethod
     def find_next_available(cls,selected_patient,nurse = False):
-
+        global skip_index
         appointment = None
         found = False
         selected_doctor = get_doctor(selected_patient)
-
         index = 0
-
         if nurse:
             for nurse in nurses_list:
                 for appointment in nurses_appointments[nurse]:
-                    appointment_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
-                    if not appointment_time < now:
-                            if appointment[3]=='':
+                    candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
+                    candidate_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y').date()
+                    if now < candidate_time:
+                        if today <= candidate_date:
+                            if appointment[3]=='' and int(appointment[0]) != skip_index:
                                 fist_available = appointment[1],appointment[2]
                                 found = True
                                 selected_nurse = object_to_list(Nurse,nurse)
                                 return Appointment(False, selected_nurse,selected_patient,fist_available[1],fist_available[2]), index
 
-                            index += 1    
-                    # If the appointment requested with any provider        
+                            index += 1
+                            skip_index = index         
                 
             if found == False:
                 return None, selected_nurse
 
         else:
             for doctor in doctors_appointments:
-                # If the appointment requested with a specific provider
                 if doctor == str(selected_doctor):
                         for appointment in doctors_appointments[doctor]:
-                            appointment_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
-                            appointment_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y')
-                            if not appointment_time < now:
-                                if appointment[3]=='':
-                                    fist_available = appointment[1],appointment[2]
-                                    found = True
-                                    return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
-                                index += 1
-                            else:
-                                continue 
-                    # If the appointment requested with any provider        
+                            candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
+                            candidate_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y').date()
+                            # If current time < candidate_time &  current date <= candidate_date, reserve the free appointment slot
+                            if now < candidate_time:
+                                 if today <= candidate_date:
+                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
+                                        fist_available = appointment[1],appointment[2]
+                                        found = True
+                                        skip_index = index   
+                                        return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
+                            # If the current time > candidate_time & current date < candidate_date
+                            elif now > candidate_time:
+                                if today < candidate_date:
+                                     if appointment[3]=='' and int(appointment[0]) != skip_index:
+                                            fist_available = appointment[1],appointment[2]
+                                            found = True
+                                            skip_index = index   
+                                            return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
+                           
+                            index += 1
+                        
+
                 
         if found == False:
             return None, selected_doctor
@@ -297,41 +328,60 @@ class AppointmentSchedule():
     def make_urgent_appointment(cls,selected_patient):
 
         selected_doctor = get_doctor(selected_patient)
-        date = today.replace(second=0,microsecond=0).date()
-        time = doctors_appointments[str(selected_doctor)][0][2]
-        time_object = datetime.datetime.strptime(time,'%')
 
+        date = today
+        m_d_y_today_format = date.strftime('%d-%m-%Y')
         if today.weekday() == 5:
             date = today + datetime.timedelta(days=2)
-            # if time
+
         elif today.weekday() == 6:
             date = today + datetime.timedelta(days=1)
         
+
+        def time_difference(candidate_time, now):
+            temp_candidate_time = datetime.datetime(1900,1,1,candidate_time.hour,candidate_time.minute)
+            temp_now = datetime.datetime(1900,1,1,now.hour,now.minute)
+            difference = (temp_candidate_time - temp_now).seconds
+            if difference > 1800:
+                return True
+            else:
+                return False
+            
+
         # Find the index of the urgent_appointment
         index = 0
         for appointment in doctors_appointments[str(selected_doctor)]:
             candidate_date = appointment[1]
-            candidate_time = appointment[2]
+            candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
             # Find the nearest slot compared to
-            if candidate_date == str(date) and candidate_time == time:
-                # If there is already another urgent appointment double book with 
-                # a regular one, skip to the next available one.
-                # only one urgent appointment can be double booked with a regular one
+            if candidate_date == m_d_y_today_format and date > today:
+                
+                # If there is already another urgent appointment at the same time 
+                # skip to the next available slot (only one urgent appointment at a time slot is allowed)
                 if appointment[5] != '':
                     index +=1
                     continue
+
                 # If there is no another urgent appointment at the same slot 
                 # reserve the slot and exit the loop
                 else:
                     break
-            #
-            elif appointment[5] != '':
-                index +=1
-                continue
-                    
-            else:
-                break
-    
+
+            # If the time is > clinic end time, check next day's available slot
+            elif candidate_date == m_d_y_today_format and date == today:
+                
+                
+                if candidate_time > now and time_difference(candidate_time,now):
+                    break
+
+                else:
+                    index +=1
+                    continue    
+            
+
+            # # If no any slot is found, break and return None        
+            # else:
+            #     break
 
         urgent_appointment = Appointment(True,selected_doctor,selected_patient,candidate_date, candidate_time)
 
@@ -702,9 +752,10 @@ def generate_appointments_schedules():
 def appointments_interface():
     '''Interface for booking appointments for registered patients'''
 
-    global patients_list, selected_doctor
+    global patients_list, skip_index
+    next_available = None
 
-    clear_screen()
+    clear_screen() 
     print_list(patients_headers)
     print('') # A new line
 
@@ -713,31 +764,44 @@ def appointments_interface():
     selected_patient = select_record(Patient,search_result)
     # Options after selecting the patient
     while selected_patient != None:
-        mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment','Cancel Appointment'])
+        mode_selection = menu(['Book Regular Appointment','Book Urgent Appointment'])
         while mode_selection != '-1':
             # To book regular appointment (first available):
             if mode_selection == "1":
-                first_available = receptionist.make_appointment(selected_patient)
-                print(f'First available appointment is on {first_available[0].date} at {first_available[0].time}\n')
-                confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
-                if confirm_appointment == '':
-                    appointment = AppointmentSchedule.add_appointment(*first_available)
-                    print(f'\n{appointment} was added successfully\n')
-                    appointments_interface()
+                confirm_appointment = None
+                while confirm_appointment in ['n',None]:
+                    next_available = receptionist.make_appointment(selected_patient)
+                    print(f'Next available appointment is on {next_available[0].date} at {next_available[0].time}')
+                    confirm_appointment = input("\033[96mPlease hit enter to select this appointment or\
+'n' for another alternative: \033[0m")
+
+                input("\033[96mPlease hit enter to confirm: \033[0m")
+                appointment = AppointmentSchedule.add_appointment(*next_available)
+                what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+or -1 to go back to the receptionist menu: ''')
+                if what_next == '-1':
+                    receptionist_interface()
+                skip_index = 0
+                appointments_interface()
+            
             # To book ugent Appointment (same day or earliest even
             # if no space is available on the regular schedule):
             elif mode_selection == "2":
                     urgent_appointment = AppointmentSchedule.make_urgent_appointment(selected_patient)
-                    print(f'First urgent appointment is on {urgent_appointment[0].date} at {urgent_appointment[0].time}\n')
+                    print(f'First urgent appointment is on {urgent_appointment[0].date} at {urgent_appointment[0].time}')
                     confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
                     if confirm_appointment == '':
                         appointment = AppointmentSchedule.add_appointment(*urgent_appointment)
-                    print(f'\n{appointment} was added successfully\n')
+                    what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+or -1 to go back to the receptionist menu: ''')
+                    if what_next == '-1':
+                        receptionist_interface()
+             
                     appointments_interface()
 
             elif mode_selection == "0":
                 quit_application()
-            
+
             elif mode_selection == '':
                 clear_screen()
                 print_list(patients_headers)
@@ -769,7 +833,7 @@ def receptionist_interface():
     while True:
 
         clear_screen()
-        options = ['Register Patients','Book Appointment / Request Repeat','Edit/Delete Patients','Generate Appointments Schedules']
+        options = ['Register Patients','Edit/Delete Patients','Book Appointment / Request Repeat','Cancel appointments','Generate Appointments Schedules']
         menu_selection = menu(options)
 
         if menu_selection == '1' :
@@ -777,12 +841,15 @@ def receptionist_interface():
             registration_interface('Patient',patients_list)
 
         if menu_selection == '2' :
-            appointments_interface()
-
-        if menu_selection == '3' :
             edit_delete_interface()
 
+        if menu_selection == '3' :
+            appointments_interface()
+
         if menu_selection == '4' :
+           receptionist.cancel_appointment()
+
+        if menu_selection == '5' :
             generate_appointments_schedules()
 
         elif  menu_selection == '-1' :
@@ -894,31 +961,53 @@ def import_from_cv():
 
 def import_schedules_from_cv():
     '''Imports appointment schedules from csv files'''
-
     os.getcwd()
-    file_names = []
+    doctors_files = []
+    nurses_files = []
     temp_schedule = []
-    appointment_schedule = [doctors_appointments,nurses_appointments]
+    
+    # try:
+    for file in list(glob.glob('appointments_schedule*')):
+        if 'Dr.' not in file:
+            nurses_files.append(file)
+        else:
+            doctors_files.append(file)
 
-    for schedule in appointment_schedule:
+    doctors_appointments.clear()
+    for file in doctors_files:    
+        file = os.getcwd() + f'/{file}'   
+        with open(file, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:
+                    temp_schedule.append(row)
 
-        for file in list(glob.glob('appointments_schedule*')):
-            file_names.append(file)
+        provider_name = os.path.basename(file).replace('.csv','').replace('appointments_schedule - Dr. ','')
+        doctors_appointments[provider_name] = temp_schedule
+        temp_schedule = []
 
-        schedule.clear()
+    nurses_appointments.clear()
+    for file in nurses_files:    
+        file = os.getcwd() + f'/{file}'   
+        with open(file, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:
+                    temp_schedule.append(row)
 
-        for file in file_names:
-            
-            file = os.getcwd() + f'/{file}'   
-            with open(file, 'r') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if row:
-                        temp_schedule.append(row)
-            provder_name = os.path.basename(file).replace('.csv','').replace('appointments_schedule - Dr. ','')
-            schedule[provder_name] = temp_schedule
+            provider_name = os.path.basename(file).replace('.csv','').replace('appointments_schedule - ','')
+            nurses_appointments[provider_name] = temp_schedule
             temp_schedule = []
-       
+
+    # Import working hours
+    file = os.getcwd() + '/doctors_working_hours.csv'
+    with open(file,'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            doctors_working_hours.append(row)
+
+    # except FileNotFoundError:
+    #     pass
 
 def quit_application():
     '''Clears screen, print Good Bye!
