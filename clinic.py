@@ -21,7 +21,7 @@ doctors_appointments = {}
 doctors_working_hours = []
 nurses_appointments = {}
 nurses_working_hours = []
-skip_index = 0
+skip_index = None
 today = datetime.datetime.today().date()
 now = datetime.datetime.now().time().replace(second=0,microsecond=0)
 
@@ -311,7 +311,7 @@ class AppointmentSchedule():
                                     return Appointment(False, selected_nurse,selected_patient,fist_available[0],fist_available[1]), index
                                     
                         elif now > candidate_time:
-                                if today < candidate_date:
+                                if today <= candidate_date:
                                     if appointment[3]=='' and int(appointment[0]) != skip_index:
                                             fist_available = appointment[1],appointment[2]
                                             found = True
@@ -899,7 +899,7 @@ Hit enter to go there:''')
 or -1 to go back to the receptionist menu: ''')
                 if what_next == '-1':
                     receptionist_interface()
-                skip_index = 0
+                skip_index = None
                 appointments_interface()
             
             # To book ugent Appointment (same day or earliest even
@@ -910,7 +910,7 @@ or -1 to go back to the receptionist menu: ''')
                         print(f'First urgent appointment is on {urgent_appointment[0].date} at {urgent_appointment[0].time}')
                         confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
                         if confirm_appointment == '':
-                            appointment = AppointmentSchedule.add_appointment(*urgent_appointment)
+                            AppointmentSchedule.add_appointment(*urgent_appointment)
                         what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
@@ -923,12 +923,24 @@ using the administration module: \033[0m. Hit enter to go back to the receptioni
             # To book appointment with a nurse
             elif mode_selection == "3":
                 nurse_appointment = receptionist.make_appointment(selected_patient,True)
+                while confirm_appointment in ['n',None]:
                 if nurse_appointment == None:
                     what_next = message('''Please generate appointments schedule from the administration module first.
 Hit enter to go there:''')
+
                     if what_next == '':
                         clear_screen()
                         administration_interface()
+                else:
+                        print(f'Next available appointment is on {nurse_appointment[0].date} at {nurse_appointment[0].time}')
+                        confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
+                        if confirm_appointment == '':
+                            AppointmentSchedule.add_appointment(*nurse_appointment)
+                        what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+or -1 to go back to the receptionist menu: ''')
+                        if what_next == '-1':
+                            receptionist_interface()
+                   
 
             elif mode_selection == "0":
                 quit_application()
