@@ -311,7 +311,7 @@ class AppointmentSchedule():
                                     return Appointment(False, selected_nurse,selected_patient,fist_available[0],fist_available[1]), index
                                     
                         elif now > candidate_time:
-                                if today <= candidate_date:
+                                if today < candidate_date:
                                     if appointment[3]=='' and int(appointment[0]) != skip_index:
                                             fist_available = appointment[1],appointment[2]
                                             found = True
@@ -328,27 +328,27 @@ class AppointmentSchedule():
             for doctor in doctors_appointments:
                 if doctors_appointments.get(doctor):
                     if doctor == str(selected_doctor):
-                            for appointment in doctors_appointments[doctor]:
-                                candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
-                                candidate_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y').date()
-                                # If current time < candidate_time &  current date <= candidate_date, reserve the free appointment slot
-                                if now < candidate_time:
-                                    if today <= candidate_date:
-                                        if appointment[3]=='' and int(appointment[0]) != skip_index:
+                        for appointment in doctors_appointments[doctor]:
+                            candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
+                            candidate_date = datetime.datetime.strptime (appointment[1],'%d-%m-%Y').date()
+                            # If current time < candidate_time &  current date <= candidate_date, reserve the free appointment slot
+                            if now < candidate_time:
+                                if today <= candidate_date:
+                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
+                                        fist_available = appointment[1],appointment[2]
+                                        found = True
+                                        skip_index = index   
+                                        return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
+                            # If the current time > candidate_time & current date < candidate_date
+                            elif now > candidate_time:
+                                if today < candidate_date:
+                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
                                             fist_available = appointment[1],appointment[2]
                                             found = True
                                             skip_index = index   
                                             return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
-                                # If the current time > candidate_time & current date < candidate_date
-                                elif now > candidate_time:
-                                    if today < candidate_date:
-                                        if appointment[3]=='' and int(appointment[0]) != skip_index:
-                                                fist_available = appointment[1],appointment[2]
-                                                found = True
-                                                skip_index = index   
-                                                return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
 
-                                index += 1
+                            index += 1
                 
                 else:
                     print('''Please generate doctor appointments schedules from the administration\n
@@ -388,8 +388,13 @@ module before scheduling appointments''')
                             schedule[provider][index][3] = selected_patient.file_no
                             schedule[provider][index][4] = selected_patient
 
-        # Modify the appointments_schedule - Dr. <provider>.csv
-        list_to_csv(schedule[str(selected_provider)],f'appointments_schedule - Dr. {str(selected_provider)}')
+        # Modify the appointments_schedule - <Dr./> <provider>.csv
+        if isinstance(selected_provider,Doctor):
+            list_to_csv(schedule[str(selected_provider)],f'appointments_schedule - Dr. {str(selected_provider)}')
+
+        else:
+            list_to_csv(schedule[str(selected_provider)],f'appointments_schedule - {str(selected_provider)}')
+
         return appointment
 
 
@@ -865,6 +870,7 @@ def appointments_interface():
 
     global patients_list, skip_index
     next_available = None
+    confirm_appointment = None
 
     clear_screen() 
     print_list(patients_headers)
@@ -879,8 +885,7 @@ def appointments_interface():
         while mode_selection != '-1':
             # To book regular appointment (first available):
             if mode_selection == "1":
-                confirm_appointment = None
-                while confirm_appointment in ['n',None]:
+                while confirm_appointment in ['n',None]:   
                     next_available = receptionist.make_appointment(selected_patient)
                     if next_available[0] == None:
                         what_next = message('''Please generate appointments schedule from the administration module first.
@@ -890,11 +895,12 @@ Hit enter to go there:''')
                             administration_interface()
 
                     print(f'Next available appointment is on {next_available[0].date} at {next_available[0].time}')
+                    # skip_index = next_available[1]
                     confirm_appointment = input("\033[96mPlease hit enter to select this appointment or\
 'n' for another alternative: \033[0m")
 
                 input("\033[96mPlease hit enter to confirm: \033[0m")
-                appointment = AppointmentSchedule.add_appointment(*next_available)
+                AppointmentSchedule.add_appointment(*next_available)
                 what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                 if what_next == '-1':
@@ -916,31 +922,36 @@ or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
                             receptionist_interface()
                     else:
-                        input('''\033[96mNo any slot is available, consider generating more appointment slots\n
-using the administration module: \033[0m. Hit enter to go back to the receptionist menu''')
+                        input('''\033[96mNo appointments are available, please generate appointment slots\n
+using the receptionist menu. Hit enter to go there: \033[0m''')
                     receptionist_interface()
 
             # To book appointment with a nurse
             elif mode_selection == "3":
                 nurse_appointment = receptionist.make_appointment(selected_patient,True)
                 while confirm_appointment in ['n',None]:
-                if nurse_appointment == None:
-                    what_next = message('''Please generate appointments schedule from the administration module first.
+                    if nurse_appointment == None:
+                        what_next = message('''Please generate appointments schedule from the receptionist module first.
 Hit enter to go there:''')
 
-                    if what_next == '':
-                        clear_screen()
-                        administration_interface()
-                else:
-                        print(f'Next available appointment is on {nurse_appointment[0].date} at {nurse_appointment[0].time}')
-                        confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
-                        if confirm_appointment == '':
-                            AppointmentSchedule.add_appointment(*nurse_appointment)
+                        if what_next == '':
+                            clear_screen()
+                            administration_interface()
+                    
+                    print(f'Next available appointment is on {nurse_appointment[0].date} at {nurse_appointment[0].time}')
+                    # skip_index = next_available[1]
+                    confirm_appointment = input("\033[96mPlease hit enter to select this appointment or\
+'n' for another alternative: \033[0m")
+                    if confirm_appointment == '':
+                        AppointmentSchedule.add_appointment(*nurse_appointment)
                         what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
                             receptionist_interface()
-                   
+
+                skip_index = None
+                appointments_interface()
+                        
 
             elif mode_selection == "0":
                 quit_application()
@@ -962,13 +973,17 @@ def view_appointments():
     print_list(doctors_headers,doctors_list)
     print('') # A new line
     selected_provider = select_record(Doctor,doctors_list)
-    appointments = [appointment for appointment in doctors_appointments[str(selected_provider)]if
-    appointment[3] != '' ]
-    print('') # A new line
-    print(f'Dr. {str(selected_provider)} Appointments')
-    print_list(appointments_headers,appointments)
-    what_next = message('Hit enter to return to the receptionist menu',True)
-    if what_next == '':
+    if selected_provider != None:
+        appointments = [appointment for appointment in doctors_appointments[str(selected_provider)]if
+        appointment[3] != '' ]
+        print('') # A new line
+        print(f'Dr. {str(selected_provider)} Appointments')
+        print_list(appointments_headers,appointments)
+        what_next = message('Hit enter to return to the receptionist menu',True)
+        if what_next == '':
+            receptionist_interface()
+    
+    else:
         receptionist_interface()
     
     return selected_provider
