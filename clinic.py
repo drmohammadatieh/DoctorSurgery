@@ -4,6 +4,8 @@ import datetime
 import os
 import csv
 from xmlrpc.client import DateTime
+
+from pytest import skip
 import test_clinic
 from test_clinic import *
 import glob
@@ -285,17 +287,36 @@ class AppointmentSchedule():
         with whom the patient is registered.
         '''
 
-        global skip_index
         appointment = None
         found = False
         selected_doctor = get_doctor(selected_patient)
         index = 0
 
+        def get_next_appointment(selected_provider,selected_patient,appointment,found):
+            '''A helper function for the find_next_available()'''
+
+            global skip_index
+            if today <= candidate_date:
+                if skip_index == None:
+                    if appointment[3]=='':
+                        fist_available = appointment[1],appointment[2]
+                        found = True
+                        skip_index = index      
+                        return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index
+                else:
+                    if appointment[3]=='' and int(appointment[0]) > skip_index:
+                        fist_available = appointment[1],appointment[2]
+                        found = True
+                        skip_index = index      
+                        return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index
+                                  
+
         # If an appointment with a nurse is chosen
         if nurse:
             for nurse in nurses_list:
                 # Check if appointments schedule is available first
-                nurse_name = (nurse[1]+ ' ' + nurse[2])         
+                nurse_name = (nurse[1]+ ' ' + nurse[2])
+                selected_nurse = list_to_object(Nurse,nurse)         
                 if nurses_appointments.get(nurse_name):
                     for appointment in nurses_appointments[nurse_name]:
                         candidate_time = datetime.datetime.strptime(appointment[2],'%H:%M').time()
@@ -303,22 +324,12 @@ class AppointmentSchedule():
                         # Find the nearest appointment
                         if now < candidate_time:
                             if today <= candidate_date:
-                                if appointment[3]=='' and int(appointment[0]) != skip_index:
-                                    fist_available = appointment[1],appointment[2]
-                                    found = True
-                                    skip_index = index      
-                                    selected_nurse = list_to_object(Nurse,nurse)
-                                    return Appointment(False, selected_nurse,selected_patient,fist_available[0],fist_available[1]), index
-                                    
+                                get_next_appointment(selected_nurse,selected_patient,appointment,found)
+   
                         elif now > candidate_time:
                                 if today < candidate_date:
-                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
-                                            fist_available = appointment[1],appointment[2]
-                                            found = True
-                                            skip_index = index
-                                            selected_nurse = list_to_object(Nurse,nurse)   
-                                            return Appointment(False, selected_nurse,selected_patient,fist_available[0],fist_available[1]), index
-
+                                    get_next_appointment(selected_nurse,selected_patient,appointment,found)
+                                       
                         index += 1
                             
             if found == False:
@@ -334,15 +345,23 @@ class AppointmentSchedule():
                             # If current time < candidate_time &  current date <= candidate_date, reserve the free appointment slot
                             if now < candidate_time:
                                 if today <= candidate_date:
-                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
-                                        fist_available = appointment[1],appointment[2]
-                                        found = True
-                                        skip_index = index   
-                                        return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
+                                    if skip_index == None:
+                                        if appointment[3]=='':
+                                            fist_available = appointment[1],appointment[2]
+                                            found = True
+                                            skip_index = index   
+                                            return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
                             # If the current time > candidate_time & current date < candidate_date
                             elif now > candidate_time:
                                 if today < candidate_date:
-                                    if appointment[3]=='' and int(appointment[0]) != skip_index:
+                                    if skip_index == None:
+                                        if appointment[3]=='':
+                                            fist_available = appointment[1],appointment[2]
+                                            found = True
+                                            skip_index = index   
+                                            return Appointment(False, selected_doctor,selected_patient,fist_available[0],fist_available[1]), index
+                                    else:
+                                        if  appointment[3]=='' and int(appointment[0]) > skip_index:
                                             fist_available = appointment[1],appointment[2]
                                             found = True
                                             skip_index = index   
@@ -928,9 +947,9 @@ using the receptionist menu. Hit enter to go there: \033[0m''')
 
             # To book appointment with a nurse
             elif mode_selection == "3":
-                nurse_appointment = receptionist.make_appointment(selected_patient,True)
                 while confirm_appointment in ['n',None]:
-                    if nurse_appointment == None:
+                    next_available = receptionist.make_appointment(selected_patient,True)
+                    if next_available == None:
                         what_next = message('''Please generate appointments schedule from the receptionist module first.
 Hit enter to go there:''')
 
@@ -938,12 +957,13 @@ Hit enter to go there:''')
                             clear_screen()
                             administration_interface()
                     
-                    print(f'Next available appointment is on {nurse_appointment[0].date} at {nurse_appointment[0].time}')
+                    
+                    print(f'Next available appointment is on {next_available[0].date} at {next_available[0].time}')
                     # skip_index = next_available[1]
                     confirm_appointment = input("\033[96mPlease hit enter to select this appointment or\
 'n' for another alternative: \033[0m")
                     if confirm_appointment == '':
-                        AppointmentSchedule.add_appointment(*nurse_appointment)
+                        AppointmentSchedule.add_appointment(*next_available)
                         what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
