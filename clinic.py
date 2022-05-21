@@ -286,29 +286,26 @@ class AppointmentSchedule():
         '''Finds next available appointment on the doctor's schedule
         with whom the patient is registered.
         '''
-
+        global skip_index
         appointment = None
         found = False
         selected_doctor = get_doctor(selected_patient)
         index = 0
 
-        def get_next_appointment(selected_provider,selected_patient,appointment,found):
+        def get_next_appointment(selected_provider,selected_patient,appointment):
             '''A helper function for the find_next_available()'''
 
             global skip_index
-            if today <= candidate_date:
-                if skip_index == None:
-                    if appointment[3]=='':
-                        fist_available = appointment[1],appointment[2]
-                        found = True
-                        skip_index = index      
-                        return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index
-                else:
-                    if appointment[3]=='' and int(appointment[0]) > skip_index:
-                        fist_available = appointment[1],appointment[2]
-                        found = True
-                        skip_index = index      
-                        return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index
+            if skip_index == None:
+                if appointment[3]=='':
+                    fist_available = appointment[1],appointment[2]
+                    skip_index = index      
+                    return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index, found
+            else:
+                if appointment[3]=='' and int(appointment[0]) > skip_index:
+                    fist_available = appointment[1],appointment[2]
+                    skip_index = index      
+                    return Appointment(False, selected_provider,selected_patient,fist_available[0],fist_available[1]), index , found
                                   
 
         # If an appointment with a nurse is chosen
@@ -324,12 +321,14 @@ class AppointmentSchedule():
                         # Find the nearest appointment
                         if now < candidate_time:
                             if today <= candidate_date:
-                                get_next_appointment(selected_nurse,selected_patient,appointment,found)
-   
+                                found = True
+                                return get_next_appointment(selected_nurse,selected_patient,appointment)
+                                
                         elif now > candidate_time:
                                 if today < candidate_date:
-                                    get_next_appointment(selected_nurse,selected_patient,appointment,found)
-                                       
+                                    found = True
+                                    return get_next_appointment(selected_nurse,selected_patient,appointment)
+                                 
                         index += 1
                             
             if found == False:
