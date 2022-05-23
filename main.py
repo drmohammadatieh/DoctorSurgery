@@ -636,6 +636,7 @@ def print_list(headers, list = patients_list):
 
         print('') # A new line
 
+
 def message(color,message,space_before = False, space_after = False):
     '''Prints a custom message and returns user's input'''
 
@@ -679,7 +680,6 @@ def menu(options,last_two = True):
     menu_selection = input(options_string)
 
     return menu_selection
-
 
 
 def register(registree):
@@ -855,9 +855,6 @@ def registration_interface(registree_type: object,registrees_list: list):
     file_name = registreeType.lower() + 's_list'
     list_to_csv(registrees_list,file_name)
 
-
-def edit_delete_interface():
-    pass
 
 
 def search_record_by_name(person_type: object,persons_list:list):
@@ -1111,6 +1108,7 @@ or -1 to go back to the receptionist menu: ''')
         appointments_interface()
         
 def view_appointments(preselected_provider = None):
+    '''Prints a table with all appointments for a specific doctor or nurse'''
 
     if not preselected_provider:
         print_list(doctors_headers,doctors_list)
@@ -1159,6 +1157,7 @@ def view_appointments(preselected_provider = None):
     
    
 def view_consultations(preselected_provider):
+    '''Prints a table with all teh consultations provided  by a specific doctor or nurse'''
     
     if not preselected_provider:
         print_list(doctors_headers,doctors_list)
@@ -1192,6 +1191,7 @@ def view_consultations(preselected_provider):
 
 
 def view_prescriptions(preselected_doctor):
+    '''Prints a table with all prescription prescribed by a specific doctor'''
 
     if not preselected_doctor:
         print_list(doctors_headers,doctors_list)
