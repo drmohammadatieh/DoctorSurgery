@@ -36,7 +36,7 @@ doctors_headers =['Employee Number','Fist Name','Last Name']
 nurses_headers =['Employee Number','Fist Name','Last Name']
 appointments_headers = ['Appointment No.','Date','Time','File No.',"Patient's Name","(Urgent) File No.",'(Urgent) Name']
 prescription_headers = ['Prescription No.','Date','Time',"Patient's Name",'Type','Quantity','Dosage',"Doctor's Name"]
-consultations_headers = ['Consultation No.','Date','Time','File No.',"Patient's Name",'Consultation Details                    ']
+consultations_headers = ['Consultation No.','Date','Time','File No.',"Patient's Name","Provider's Name",'Consultation Details                    ']
 
 ### End of Global Variables ###
 
@@ -68,18 +68,31 @@ class HealthCareProfessional(Employee):
     Methods: consultation()
     '''
     
-    def consultation(self):
+    def consultation(self,provider_type):
 
         global consultations_list
-        # Show only patients registered with the selected_provider
-        own_patients = [patient for patient in patients_list if patient[-1]==str(self)]  
+        # Show only patients registered with the selected_doctor or all for if the selected provider is a Nurse
+        if provider_type == Doctor:
+            own_patients = [patient for patient in patients_list if patient[-1]==str(self)]  
+      
+        else:
+            own_patients = patients_list
+            
         print_list(patients_headers, own_patients)
         # Select patient by searching the name then selecting file no  
         search_result = search_record_by_name(Patient,own_patients)
         selected_patient = select_record(Patient,search_result)
+
+        if selected_patient in [None,'']:
+            clear_screen()
+            return None
         
         consult_details = message('blue','Write your consultation details',space_before = True)
-        consultation_details = [today,now,selected_patient.file_no,str(selected_patient),str(self),consult_details]
+        if provider_type ==  Doctor:
+            consultation_details = [today,now,selected_patient.file_no,str(selected_patient),f'Dr. {str(self)}',consult_details]
+
+        else:
+            consultation_details = [today,now,selected_patient.file_no,str(selected_patient),str(self),consult_details]
 
         if not consult_details:
             consultation_details = ['1'] + consultation_details
@@ -117,6 +130,10 @@ class Doctor(HealthCareProfessional):
             # Select patient by searching the name then selecting file no  
             search_result = search_record_by_name(Patient,own_patients)
             selected_patient = select_record(Patient,search_result)
+
+            if selected_patient in [None,'']:
+                clear_screen()
+                return None
 
             # Get the prescription details from the doctor
             add_another = None
@@ -637,7 +654,7 @@ def message(color,message,space_before = False, space_after = False):
 
     if space_before:
         print('')
-    response = input(f'\033[{foreground}m{message}: \033[0m')
+    response = input(f"\033[{foreground}m{message}: \033[0m")
     if space_after:
         print('')
     return response
@@ -1104,23 +1121,44 @@ def view_appointments(preselected_provider = None):
         selected_provider = preselected_provider
 
     if selected_provider != None:
-        appointments = [appointment for appointment in doctors_appointments[str(selected_provider)]if
-        appointment[3] != '' ]
-        print('') # A new line
-        print(f"Dr. {str(selected_provider)}'s Appointments")
+        if isinstance(selected_provider,Doctor):
+            appointments = [appointment for appointment in doctors_appointments[str(selected_provider)]if
+            appointment[3] != '' ]
+            print('') # A new line
+            print(f"Dr. {str(selected_provider)}'s Appointments")
+       
+
+        else:
+            appointments = [appointment for appointment in nurses_appointments[str(selected_provider)]if
+            appointment[3] != '' ]
+            print('') # A new line
+            print(f"{str(selected_provider)}'s Appointments")
+
         print('') # A new line
         print_list(appointments_headers,appointments)
+
         what_next = message('blue','Hit enter to return to the previous menu',True)
         if what_next == '':
-            receptionist_interface()
+            if isinstance(preselected_provider,Doctor):
+                clear_screen()
+                doctor_interface()
+            
+            elif isinstance(preselected_provider,Nurse):
+                clear_screen()
+                nurse_interface()
+
+            else:
+                clear_screen()
+                receptionist_interface()
 
     else:
-        receptionist_interface()
+        clear_screen()
+        main_screen()
     
     return selected_provider
     
    
-def view_consulations(preselected_provider):
+def view_consultations(preselected_provider):
     
     if not preselected_provider:
         print_list(doctors_headers,doctors_list)
@@ -1139,18 +1177,21 @@ def view_consulations(preselected_provider):
         what_next = message('blue','Hit enter to return to the previous menu',True)
         if what_next == '':
             if isinstance(preselected_provider,Doctor):
+                clear_screen()
                 doctor_interface()
 
             else:
+                clear_screen()
                 nurse_interface()
 
     else:
-        receptionist_interface()
+        clear_screen()
+        main_screen()
     
     return selected_provider
 
 
-def view_consulations(selected_doctor):
+def view_prescriptions(selected_doctor):
     pass
 
 
@@ -1207,41 +1248,61 @@ def receptionist_interface():
 def nurse_interface():
     '''Nurse interface for viewing appointments and writing consultations'''
 
-    options = ['View Appointments','Write Consultation','Write Prescription']
-    menu_selection = menu(options)
+    print_list(nurses_headers,nurses_list)
+    selected_nurse = select_record(Nurse,nurses_list)
+    clear_screen()
 
+    while True:
+    
+        options = ['View Appointments', 'Write a Consultation', 'View Consulations']
+        menu_selection = menu(options)
+
+        if menu_selection == '1':
+            view_appointments(selected_nurse)
+
+        if menu_selection == '2':
+            selected_nurse.consultation(Nurse)
+
+        if menu_selection == '3':
+            view_consultations(selected_nurse)
+
+        if menu_selection == '-1':
+            clear_screen()
+            main_screen()
+
+        
 
 def doctor_interface():
     '''Doctor interface for viewing appointments, writing consultations and writing prescriptions'''
      
     print_list(doctors_headers,doctors_list)
     selected_doctor = select_record(Doctor,doctors_list)
+    clear_screen()
    
     while True:
 
-        options = ['View Appointments','Write Consultation','Write Prescription','View Consultations','View Prescriptions']
+        options = ['View Appointments','Write a Consultation','Write a Prescription','View Consultations','View Prescriptions']
         menu_selection = menu(options)
 
         if menu_selection == '1':
             view_appointments(selected_doctor)
 
         if menu_selection == '2':
-            selected_doctor.consultation()
+            selected_doctor.consultation(Doctor)
 
         if menu_selection == '3':
             selected_doctor.issue_prescription()
 
         if menu_selection == '4':
-            view_consulations()
+            view_consultations(selected_doctor)
 
         if menu_selection == '5':
-            view_prescriptions()
+            view_prescriptions(selected_doctor)
 
         if menu_selection == '-1':
             clear_screen()
             main_screen()
 
-    
 
 def administration_interface():
     '''Administration interface for adding healthcare providers to the clinic'''
