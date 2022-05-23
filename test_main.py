@@ -2,8 +2,9 @@ import unittest
 import os
 import csv
 import main
+from main import RegisteredPatientsLimit # Review
 from main import * 
-from main import DuplicateRecord # Review
+
 
 
 
@@ -40,7 +41,20 @@ class TestClinic(unittest.TestCase):
         self.assertEqual(self.patient_1_info, list(vars(self.patient_1).values()))
         self.assertEqual(self.patient_2_info, list(vars(self.patient_2).values()))
         patients_list.clear()
-    
+
+
+    def test_register_patient_limit(self):
+        '''Tests of the 500 patients registration limit'''
+
+        patients_list.clear()
+        # Save dummy 500 patients information to the patients_list
+        for n in range(0,501):
+            patients_list.append([n] + self.patient_1_info[1:])
+
+        # Try to add another patient; a RegisteredPatientsLimit Exception is expected
+        with self.assertRaises(RegisteredPatientsLimit):
+            register(self.patient_2)
+
 
         
     def test_check_duplicate(self):
@@ -112,6 +126,14 @@ class TestClinic(unittest.TestCase):
 
         # Find first available appointment
         appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
+        AppointmentSchedule.add_appointment(*appoinment_match)
+
+
+        def test_cancel_appointment(self):
+
+            receptionist.cancel_appointment(appoinment_match[1],)
+
+
 
         # Test the Class of the generated appointment
         self.assertIsInstance(appoinment_match[0],Appointment)
@@ -123,6 +145,17 @@ class TestClinic(unittest.TestCase):
         doctors_list.pop()
         list_to_csv(doctors_list,'doctors_list')
         os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
+
+
+            
+
+
+    
+
+
+
+    
+
 
 
 

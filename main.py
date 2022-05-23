@@ -1,5 +1,7 @@
 # imports
+from asyncio import selector_events
 import copy
+from curses import erasechar
 import datetime
 from email.headerregistry import DateHeader
 import os
@@ -22,6 +24,7 @@ prescriptions_list = [] # Stores al the prescription details
 consultations_list = [] # Stores all the consultation details
 doctors_appointments = {} # Stores doctors appointments
 nurses_appointments = {} # Stores nurses appointments
+
 skip_index = None # Stores the index of the next available appointment to enable finding the following one
 today = datetime.datetime.today().date()
 now = datetime.datetime.now().time().replace(second=0,microsecond=0)
@@ -37,7 +40,7 @@ consultations_headers = []
 
 ### End of Global Variables ###
 
-class DuplicateRecord(Exception):
+class RegisteredPatientsLimit(Exception):
     
     pass
 
@@ -64,21 +67,19 @@ class HealthCareProfessional(Employee):
     Inherited attributes: employee_no: str,first_name: str,last_name:str
     Methods: consultation()
     '''
-
-    @classmethod
-    def consultation(cls,selected_provider):
+    
+    def consultation(self):
 
         global consultations_list
         # Show only patients registered with the selected_provider
-        own_patients = [patient for patient in patients_list if patient[-1]==str(selected_provider)]  
+        own_patients = [patient for patient in patients_list if patient[-1]==str(self)]  
         print_list(patients_headers, own_patients)
         # Select patient by searching the name then selecting file no  
         search_result = search_record_by_name(Patient,own_patients)
-        print_list(patients_headers,search_result)
         selected_patient = select_record(Patient,search_result)
-
-        consult_details = message('Write your consultation details')
-        consultation_details = [today,now,selected_patient.file_no,str(selected_patient),str(selected_provider),consult_details]
+        
+        consult_details = message('blue','Write your consultation details',space_before = True)
+        consultation_details = [today,now,selected_patient.file_no,str(selected_patient),str(self),consult_details]
 
         if not consult_details:
             consultation_details = ['1'] + consultation_details
@@ -88,6 +89,8 @@ class HealthCareProfessional(Employee):
             
         consultations_list.append(consultation_details)
         list_to_csv(consultations_list,'consultations_list')
+        clear_screen()
+
         return consultation_details
 
    
@@ -98,40 +101,54 @@ class Doctor(HealthCareProfessional):
     Methods: issue_prescription()
     '''
     
-    @classmethod
-    def issue_prescription(self,selected_provider):
+    def issue_prescription(self, prescription = None):
+        '''Issues a new prescription or a repeat prescription after being
+        forwarded by a receptionist
+        '''
 
         global prescriptions_list
 
-        # Show only patients registered with the selected_provider
-        own_patients = [patient for patient in patients_list if patient[-1]==str(selected_provider)]  
-        print_list(patients_headers, own_patients)
-        # Select patient by searching the name then selecting file no  
-        search_result = search_record_by_name(Patient,own_patients)
-        print_list(patients_headers,search_result)
-        selected_patient = select_record(Patient,search_result)
+        # If the prescription argument == None, this means it is a new prescription 
+        if not prescription:
 
-        add_another = None
-        while True:
-            if add_another == '-1':
-                break
+            # Show only patients registered with the selected_provider
+            own_patients = [patient for patient in patients_list if patient[-1]==str(self)]  
+            print_list(patients_headers, own_patients)
+            # Select patient by searching the name then selecting file no  
+            search_result = search_record_by_name(Patient,own_patients)
+            selected_patient = select_record(Patient,search_result)
 
-            type = message('Drug name')
-            quantity = message('Quantity')
-            dosage = message('Dosage')
-            new_prescription = Prescription(today,now,selected_patient,type,quantity,dosage,selected_provider)
-            new_prescription_info = object_to_list(new_prescription)
-            print(new_prescription_info)
+            # Get the prescription details from the doctor
+            add_another = None
+            while True:
+                if add_another == '':
+                    break
 
-            if not prescriptions_list:
-                new_prescription_info = ['1'] + object_to_list(new_prescription)
-            else:
-                new_prescription_info = [len(prescriptions_list)] + object_to_list(new_prescription)
-               
+                type = message('white','Drug name').capitalize()
+                quantity = message('white','Quantity')
+                dosage = message('white','Dosage')
+                new_prescription = Prescription(today,now,selected_patient,type,quantity,dosage,self)
+                new_prescription_info = object_to_list(new_prescription)
+
+                # Append the prescription to the prescriptions_list
+                if not prescriptions_list:
+                    new_prescription_info = ['1'] + object_to_list(new_prescription)
+
+                else:
+                    new_prescription_info = [len(prescriptions_list)+1] + object_to_list(new_prescription)
+                    prescriptions_list.append(new_prescription_info)
+
+                add_another = message('blue',"Hit enter to save or enter 'a' to add another prescription")
+
+        # If the prescription argument != None, this means it is a repeat prescription
+        else:
+            new_prescription = Prescription(today,now,prescription.patient,prescription.type,prescription.quantity,prescription.dosage,self)
+            new_prescription_info = [len(prescriptions_list)+1] + object_to_list(new_prescription)
             prescriptions_list.append(new_prescription_info)
-            add_another = message('Hit enter to add another prescription or -1 to exit')
-
+            
+        # Save prescriptions to a csv file 
         list_to_csv(prescriptions_list,'prescriptions_list')
+        clear_screen()
         
         return new_prescription
 
@@ -149,6 +166,7 @@ class Patient():
     Attributes: file_no: str,first_name: str,last_name: str, address: str ='',phone :str ='',doctor: str=''
     methods: request_appointment(), request_repeat()
     '''
+
     global patients_list # access the global patients_list that contains all patients in list format
     obj_list = [] # Stores patients as objects
 
@@ -163,15 +181,12 @@ class Patient():
     def __str__(self):
         return self.first_name + ' ' + self.last_name
 
-
     def __repr__(self):
         return self.first_name + ' ' + self.last_name
         
-
     def request_appointment(self,nurse = False, urgent = False):
-        request = receptionist.make_appointment(self)
+        request = receptionist.make_appointment(self,nurse,urgent)
         return request
-
 
     def request_repeat(self):
         prescription_repeat = receptionist.forward_repeat_request(self)
@@ -182,6 +197,7 @@ class Prescription():
     '''Creates a Prescription object
 Attributes: type: str,patient: Patient,doctor: Doctor,quantity: int,dosage: float
     '''
+
     global prescriptions_list # access the global prescriptions_list that contains all prescriptions in list format
     obj_list = [] # Stores prescriptions as objects
     def __init__(self,date:datetime.date, time: datetime.time,patient: Patient, type: str,quantity: int,dosage: float,doctor: Doctor) -> None:
@@ -203,6 +219,7 @@ class Appointment():
     '''Creates an appointment object
     Attributes: urgent:bool, staff:HealthCareProfessional, patient: Patient, date: datetime.date, time: datetime.time
     '''
+
     def __init__(self, urgent:bool, staff:HealthCareProfessional, patient: Patient, date: datetime.date, time: datetime.time) -> None:
 
         self.urgent = urgent
@@ -214,7 +231,6 @@ class Appointment():
     def __repr__(self) -> str:
         return f'(Urgent = {self.urgent}) appointment for {self.patient.__str__()} on {self.date} at {self.time} (provider = {self.staff.__str__()})'
 
-    
 
 class Receptionist(Employee):
     '''Creates a receptionist object
@@ -223,7 +239,7 @@ class Receptionist(Employee):
     methods: make_appointment(), cancel_appointment()
     '''
 
-    def make_appointment(self,selected_patient,nurse = False,urgent = False):
+    def make_appointment(self, selected_patient, nurse, urgent):
         '''Schedules patient appointments with doctors and nurses by the receptionist'''
 
         if urgent:
@@ -239,12 +255,22 @@ class Receptionist(Employee):
             return next_available
 
 
-    def cancel_appointment(self):
+    def cancel_appointment(self,appointment_index = None,provider = None):
         '''Cancels patient appointment by the receptionist'''
 
-        selected_provider = view_appointments()
-        print('') # A new line
-        selected_appointment_index = select_record(Appointment,doctors_appointments[str(selected_provider)])
+        if not provider:
+            selected_provider = view_appointments()
+            print('') # A new line
+
+        else:
+            selected_provider = provider
+        
+        if not appointment_index:
+            selected_appointment_index = select_record(Appointment,doctors_appointments[str(selected_provider)])
+            
+        else:
+            selected_appointment_index = appointment_index
+
 
         if selected_appointment_index == None:
             receptionist_interface()
@@ -277,13 +303,20 @@ class Receptionist(Employee):
         print_list(patients_headers,patients_list)
         search_result = search_record_by_name(Patient,patients_list)
         selected_patient = select_record(Patient,search_result)
-        selected_doctor_info = [doctor for doctor in doctors_list if (doctor[1] + ' ' + doctor[2]) == selected_patient.doctor][0]
-        selected_doctor = list_to_object(Doctor, selected_doctor_info)
-       
-        patient_prescriptions = [prescription for prescription in prescriptions_list if prescription[3] == str(selected_patient)][0]
-        print_list(prescription_headers,patient_prescriptions)
-        input('....')
-        
+
+        repeat_another = 'a'
+        while repeat_another == 'a':      
+            if selected_patient != None:
+                selected_doctor_info = [doctor for doctor in doctors_list if (doctor[1] + ' ' + doctor[2]) == selected_patient.doctor][0]
+                selected_doctor = list_to_object(Doctor, selected_doctor_info)
+                patient_prescriptions = [prescription for prescription in prescriptions_list if prescription[3] == str(selected_patient)]
+                print('') # A new line
+                print_list(prescription_headers,patient_prescriptions)
+                selected_prescription = select_record(Prescription,patient_prescriptions,selected_doctor)
+                selected_doctor.issue_prescription(selected_prescription)
+
+            repeat_another = message('blue',"Please enter 'a' to repeat another prescription or hit enter to go to the previous menu",space_before=True)
+               
 
 class AppointmentSchedule():
     '''Creates an AppointmentSchedule object
@@ -536,6 +569,7 @@ module before scheduling appointments''')
                     # If there is no another urgent appointment at the same slot 
                     # reserve the slot and exit the loop
                     else:
+                        found = True
                         break 
             
             elif candidate_date == m_d_y_today_format and date > today:
@@ -548,6 +582,7 @@ module before scheduling appointments''')
                 # If there is no another urgent appointment at the same slot 
                 # reserve the slot and exit the loop
                 else:
+                    found = True
                     break
 
             
@@ -584,12 +619,25 @@ def print_list(headers, list = patients_list):
 
         print('') # A new line
 
-def message(message,space_before = False, space_after = False):
-    '''Prints a custom message an returns user input'''
+def message(color,message,space_before = False, space_after = False):
+    '''Prints a custom message and returns user's input'''
+
+    if color == 'red':
+        foreground = '91'
+
+    elif color == 'blue':
+        foreground = '96'
+
+    elif color == 'green':
+        foreground = '92'
+
+    else:
+        foreground = '0' # White
+
 
     if space_before:
         print('')
-    response = input(f'\033[96m{message}: \033[0m')
+    response = input(f'\033[{foreground}m{message}: \033[0m')
     if space_after:
         print('')
     return response
@@ -632,8 +680,12 @@ def register(registree):
             if not patients_list:
                 registree.file_no ='1' 
             else:
-                registree.file_no = str(max(int(patient[0]) for patient in patients_list) + 1)
-
+                file_no = str(max(int(patient[0]) for patient in patients_list) + 1)
+                if int(file_no) <= 500:
+                    registree.file_no = file_no
+                else:
+                    raise RegisteredPatientsLimit
+                
     elif type(registree).__name__ =='Doctor':
         if not registree.employee_no:
             if not doctors_list:
@@ -668,7 +720,7 @@ def check_duplicate(registree,registrees_list):
     return [duplicate, key]
 
 
-def registration_interface(registree_type,registrees_list):
+def registration_interface(registree_type: object,registrees_list: list):
     '''Interface for registering patients / doctors / nurses to the clinic.
     parameters:
 
@@ -692,15 +744,15 @@ def registration_interface(registree_type,registrees_list):
         duplicate = False  # To store the value of the check_duplicate function
         input_dict = {} # Stores patient data from CLI input
         if new_registree is None :
-            if registree_type == 'Doctor':
+            if registree_type == Doctor:
                 new_registree = Doctor('','','') # Registers a new doctor  
                 registrees_list = doctors_list
 
-            elif registree_type =='Nurse':
+            elif registree_type == Nurse:
                 new_registree = Nurse('','','') # Registers a new doctor
                 registrees_list = nurses_list
         
-            elif registree_type =='Patient':
+            elif registree_type == Patient:
                 new_registree = Patient('','','','') # Registers a new patient
                 registrees_list = patients_list
 
@@ -715,17 +767,17 @@ def registration_interface(registree_type,registrees_list):
         for header in headers_list:
             header = header.replace('_', ' ').capitalize()
             if header in ['First name' ,'Last name']:
-                input_item = input(f'{header}: ').strip()
+                input_item = message('white',f'{header}: ').strip()
                 while not input_item.replace(' ','').isalpha() and input_item != '-1':
-                    input_item = input(
-                        f'\033[91mplease enter a valid {header} or enter -1 to go to previous menu: \033[0m').strip()
+                    input_item = message(
+                        'red',f'please enter a valid {header} or enter -1 to go to previous menu: ').strip()
 
             elif header == 'Phone':
                 # Make sure the entered phone number contains only digits
-                input_item = input(f'{header}: ').strip()
+                input_item = message('white',f'{header}: ').strip()
                 while not input_item.replace(' ','').isdigit() and input_item != '-1':
-                    input_item = input(
-                        f'\033[91mplease enter a valid {header} or enter -1 to go to previous menu: \033[0m').strip()
+                    input_item = message(
+                        'red',f'please enter a valid {header} or enter -1 to go to previous menu: ').strip()
 
             elif header == 'Doctor':
                 print('\nSelecting the doctor to register the patient with...\n')
@@ -738,7 +790,7 @@ def registration_interface(registree_type,registrees_list):
 
             # If header == 'Address':
             else:
-                input_item = input(f'{header}: ')
+                input_item = message('white',f'{header}: ')
                 
             input_item.strip()
 
@@ -762,26 +814,27 @@ def registration_interface(registree_type,registrees_list):
         
         # If not duplicate, register that registree and add to the appropriate list
         if not duplicate and not previous_menu:
-            print('') # A new line
-            add_confirmation = input(
-                '\033[96mSave the information above (Y/N)?: \033[0m')
-            print('') # A new line
-
+            add_confirmation = message(
+                'green','Save the information above (Y/N)?: ',space_after=True,space_before=True)
+         
             if add_confirmation.lower() == 'y':
     
                 if registree_type == 'Patient':
                     new_registree.address, new_registree.phone, new_registree.doctor =\
                          input_dict['Address'],input_dict['Phone'],input_dict['Doctor']
 
-                register(new_registree)
-                registrees_list.append((object_to_list(new_registree)))
-                new_registree = None    
-                print('\033[92mThe record was saved successfully\033[0m')
-                print('') # A new line
-                input_item = input(
-                    f'\033[96mHit enter to add {registreeType} patient or enter -1 to go to previous menu: \033[0m')
+                try:
+                    register(new_registree)
+                    registrees_list.append((object_to_list(new_registree)))
+                    new_registree = None    
+                    print('\033[92mThe record was saved successfully\033[0m')
+                    input_item = message(
+                    'blue', f'Hit enter to add {registreeType} patient or enter -1 to go to previous menu: ')
+
+                except RegisteredPatientsLimit:
+                    print('\033[91mA maximum number of 500 patients can be registered for each doctor\033[0m')
     
-    # Save all objects data in the registree.obj_list to a csv file
+    # Save objects data to a csv file
     file_name = registree_type.lower() + 's_list'
     list_to_csv(registrees_list,file_name)
 
@@ -791,11 +844,13 @@ def edit_delete_interface():
 
 
 def search_record_by_name(person_type: object,persons_list:list):
-    '''Search a record from a list by first and/or last name'''
+    '''Searches records from a list by first and/or last name, and prints
+    and returns filtered list
+    '''
 
     def search_name(search_string,persons_list):
-        '''Search a list for matching search_string.\n
-search can be done by first name and/or last name partial or complete.
+        '''A helper function for search_record_by_name(). It searches a list for matching \n
+         search_string. search can be done by first name and/or last name partial or complete.
     '''
 
         search_result = [] 
@@ -826,9 +881,20 @@ search can be done by first name and/or last name partial or complete.
 
         return search_result
 
+
+    def filtered_list(a_list: list,search_result:list):
+        '''A helper function for Search_record_by_name().\n
+         It filters a list based on the search_name function result
+         '''
+
+        filtered_list = [
+                record for record in a_list if record[0] in search_result]
+
+        return filtered_list
+  
     # Starts by searching a record
-    search_string = input(
-        "\033[96mSearch by first and/or last name partial/complete or enter -1 to go to main menu: \033[0m")
+    search_string = message(
+     'blue', "Search by first and/or last name partial/complete or enter -1 to go to main menu: ",space_before=True)
 
     if search_string == '-1':
         clear_screen()
@@ -839,23 +905,19 @@ search can be done by first name and/or last name partial or complete.
         search_result = search_name(search_string,persons_list)
         filteredlist = filtered_list(persons_list,search_result)
         clear_screen()
-        if person_type == 'Patient':
+        if person_type == Patient:
             print_list(patients_headers,filteredlist)
-        elif person_type == 'Doctor':
+        elif person_type == Doctor:
             print_list(doctors_headers,filteredlist)
         else:
             print_list(nurses_list,filteredlist)
-
-        print('') # A new line
 
         return filteredlist
 
      # If there is no match found:
     else:
-        print('') # A new line
-        what_next = input(
-            '\033[91mNo match was found hit enter to try again or enter -1 to go to main menu: \033[0m')
-        print('') # A new line
+        what_next = message(
+            'red','No match was found hit enter to try again or enter -1 to go to main menu: ',space_after=True,space_before=True)
         if what_next == '-1':
             clear_screen()
             main_screen()
@@ -864,41 +926,37 @@ search can be done by first name and/or last name partial or complete.
             appointments_interface()
 
     
-def select_record(type: object, objects_list:list):
+def select_record(type: object, objects_list:list,doctor=None):
     '''select record by file/employee number'''
-    
-    file_no = input(
-        '\033[96mSelect a record number or enter -1 to go to the previous menu: \033[0m')
+
+    file_no = message(
+        'blue','Select a record number or enter -1 to go to the previous menu: ',space_before=True).strip()
     while not file_no.isdigit() and file_no != '-1':
         try:
             int(file_no)
         except:
-            file_no = input('\033[31mPlease enter a valid number: \033[0m')
+            file_no = message('red''Please enter a valid number: ')
         
     while file_no not in [item[0] for item in objects_list]:
         if file_no == '-1':
             return None
         else:
-            file_no = input('\033[31mPlease enter one of the record numbers above: \033[0m')
+            file_no = message('red','Please enter one of the record numbers above: ').strip()
 
     object_info = [item for item in objects_list
     if item[0] == file_no][0]
 
-    if type == Appointment:
+    if type == Appointment :
         object_index = objects_list.index(object_info)
         return object_index
+
+    elif type == Prescription:
+        object_info = object_info[1:]
+        return Prescription(*object_info)
+
     else:
         return list_to_object(type,object_info) 
             
-
-def filtered_list(a_list: list,search_result:list):
-    '''Filters a list based on the search_name function result '''
-
-    filtered_list = [
-            record for record in a_list if record[0] in search_result]
-
-    return filtered_list
-
 
 def generate_appointments_schedules():
     '''Generates appointments schedules by the receptionist'''
@@ -914,21 +972,20 @@ def generate_appointments_schedules():
         selected_provider = select_record(Nurse,nurses_list)
 
 
-
-    no_of_months = input(
-        '\033[96mSelect enter the length of the schedule in months: \033[0m')
+    no_of_months = message(
+        'blue','Select enter the length of the schedule in months: ')
 
     while not no_of_months.isdigit():
-        no_of_months = input(
-        '\033[96mPlease enter a whole number: \033[0m')
+        no_of_months = message(
+       'red','Please enter a whole number: ')
 
-    hour_per_day = input(
-        '\033[96mSelect enter the number of daily working hours / day of the schedule in months: \033[0m')
+    hour_per_day = message(
+        'blue','Select enter the number of daily working hours / day of the schedule in months: ')
 
     
     while not hour_per_day.isdigit():
-        hour_per_day = input(
-        '\033[96mPlease enter a whole number: \033[0m')
+        hour_per_day = message(
+        'red','\033[96mPlease enter a whole number: ')
         
 
     appointments_schedule = AppointmentSchedule(selected_provider,int(no_of_months),int(hour_per_day))
@@ -947,7 +1004,7 @@ def appointments_interface():
     print('') # A new line
 
     # Search a record by name
-    search_result = search_record_by_name('Patient',patients_list)
+    search_result = search_record_by_name(Patient,patients_list)
     selected_patient = select_record(Patient,search_result)
     # Options after selecting the patient
     while selected_patient != None:
@@ -955,23 +1012,22 @@ def appointments_interface():
         while mode_selection != '-1':
             # To book regular appointment (first available):
             if mode_selection == "1":
-                while confirm_appointment in ['n',None]:   
-                    next_available = receptionist.make_appointment(selected_patient)
+                while confirm_appointment in ['n',None]:  
+                    next_available = selected_patient.request_appointment()
                     if next_available[0] == None:
-                        what_next = message('''Please generate appointments schedule from the administration module first.
+                        what_next = message('red','''Please generate appointments schedule from the administration module first.
 Hit enter to go there:''')
                         if what_next == '':
                             clear_screen()
                             administration_interface()
 
                     print(f'Next available appointment is on {next_available[0].date} at {next_available[0].time}')
-                    # skip_index = next_available[1]
-                    confirm_appointment = input("\033[96mPlease hit enter to select this appointment or \
-'n' for another alternative: \033[0m")
+                    confirm_appointment = message('blue',"Please hit enter to select this appointment or \
+'n' for another alternative: ")
 
-                input("\033[96mPlease hit enter to confirm: \033[0m")
+                message('blue',"Please hit enter to confirm: ")
                 AppointmentSchedule.add_appointment(*next_available)
-                what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+                what_next = message('green','''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                 if what_next == '-1':
                     receptionist_interface()
@@ -981,41 +1037,39 @@ or -1 to go back to the receptionist menu: ''')
             # To book ugent Appointment (same day or earliest even
             # if no space is available on the regular schedule):
             elif mode_selection == "2":
-                    urgent_appointment = AppointmentSchedule.make_urgent_appointment(selected_patient)
+                    urgent_appointment = selected_patient.request_appointment(urgent=True)
                     if urgent_appointment:
                         print(f'First urgent appointment is on {urgent_appointment[0].date} at {urgent_appointment[0].time}')
-                        confirm_appointment = input('\033[96mHit enter if you want to confirm the appointment: \033[0m')
+                        confirm_appointment = message('blue','Hit enter if you want to confirm the appointment: ')
                         if confirm_appointment == '':
                             AppointmentSchedule.add_appointment(*urgent_appointment)
-                        what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+                        what_next = message('green','''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
                             receptionist_interface()
                     else:
-                        input('''\033[96mNo appointments are available, please generate appointment slots\n
-using the receptionist menu. Hit enter to go there: \033[0m''')
+                        message('red','''No appointments are available, please generate appointment slots\n
+using the receptionist menu. Hit enter to go there: ''')
                     receptionist_interface()
 
             # To book appointment with a nurse
             elif mode_selection == "3":
                 while confirm_appointment in ['n',None]:
-                    next_available = receptionist.make_appointment(selected_patient,True)
+                    next_available = selected_patient.request_appointment(nurse=True)
                     if next_available == None:
-                        what_next = message('''Please generate appointments schedule from the receptionist module first.
+                        what_next = message('red','''Please generate appointments schedule from the receptionist module first.
 Hit enter to go there:''')
 
                         if what_next == '':
                             clear_screen()
                             administration_interface()
                     
-                    
                     print(f'Next available appointment is on {next_available[0].date} at {next_available[0].time}')
-                    # skip_index = next_available[1]
-                    confirm_appointment = input("\033[96mPlease hit enter to select this appointment or \
-'n' for another alternative: \033[0m")
+                    confirm_appointment = message('blue',"Please hit enter to select this appointment or \
+'n' for another alternative: ")
                     if confirm_appointment == '':
                         AppointmentSchedule.add_appointment(*next_available)
-                        what_next = input('''The appointment was added successfully, hit enter to schedule for another patient
+                        what_next = message('green','''The appointment was added successfully, hit enter to schedule for another patient
 or -1 to go back to the receptionist menu: ''')
                         if what_next == '-1':
                             receptionist_interface()
@@ -1034,23 +1088,29 @@ or -1 to go back to the receptionist menu: ''')
                 appointments_interface()
 
             else:
-                mode_selection = input(
-                    '\033[31mPlease enter a valid selection mode: \033[0m')
+                mode_selection = message(
+                    'red','Please enter a valid selection mode: ')
 
         appointments_interface()
         
-def view_appointments():
+def view_appointments(preselected_provider = None):
 
-    print_list(doctors_headers,doctors_list)
-    print('') # A new line
-    selected_provider = select_record(Doctor,doctors_list)
+    if not preselected_provider:
+        print_list(doctors_headers,doctors_list)
+        print('') # A new line
+        selected_provider = select_record(Doctor,doctors_list)
+
+    else:
+        selected_provider = preselected_provider
+
     if selected_provider != None:
         appointments = [appointment for appointment in doctors_appointments[str(selected_provider)]if
         appointment[3] != '' ]
         print('') # A new line
-        print(f'Dr. {str(selected_provider)} Appointments')
+        print(f"Dr. {str(selected_provider)}'s Appointments")
+        print('') # A new line
         print_list(appointments_headers,appointments)
-        what_next = message('Hit enter to return to the receptionist menu',True)
+        what_next = message('blue','Hit enter to return to the previous menu',True)
         if what_next == '':
             receptionist_interface()
 
@@ -1058,6 +1118,7 @@ def view_appointments():
         receptionist_interface()
     
     return selected_provider
+    
    
 
 def get_doctor(selected_patient):
@@ -1086,7 +1147,7 @@ def receptionist_interface():
 
         if menu_selection == '1' :
             clear_screen()
-            registration_interface('Patient',patients_list)
+            registration_interface(Patient,patients_list)
 
         if menu_selection == '2' :
             edit_delete_interface()
@@ -1098,7 +1159,7 @@ def receptionist_interface():
             appointments_interface()
 
         if menu_selection == '5' :
-           receptionist.cancel_appointment()
+            receptionist.cancel_appointment()
 
         if menu_selection == '6' :
             receptionist.forward_repeat_request()
@@ -1132,13 +1193,13 @@ def doctor_interface():
         menu_selection = menu(options)
 
         if menu_selection == '1':
-            view_appointments()
+            view_appointments(selected_doctor)
 
         if menu_selection == '2':
-            Doctor.consultation(selected_doctor)
+            selected_doctor.consultation()
 
         if menu_selection == '3':
-            Doctor.issue_prescription(selected_doctor)
+            selected_doctor.issue_prescription()
 
         if menu_selection == '-1':
             clear_screen()
@@ -1163,11 +1224,11 @@ def administration_interface():
                 
         elif menu_selection == '2' :
             clear_screen()
-            registration_interface('Doctor',doctors_list)
+            registration_interface(Doctor,doctors_list)
 
         elif menu_selection == '3' :
             clear_screen()
-            registration_interface('Nurse',nurses_list)
+            registration_interface(Nurse,nurses_list)
 
         elif menu_selection == '-1':
             break
@@ -1328,7 +1389,7 @@ def main_screen():
 
     else:
         
-        go_to_main_screen = input('\033[96mPlease enter one of the mentioned options only. Hit enter to try again, otherwise the application will quit\033[0m ')
+        go_to_main_screen = message('red','Please enter one of the mentioned options only. Hit enter to try again, otherwise the application will quit: ')
 
         if go_to_main_screen == "":
         
@@ -1348,7 +1409,7 @@ if __name__ == '__main__':
 
     test_main.unittest.main(exit=False)
 
-    what_next = input('\033[96mPlease hit enter to start the application\033[0m ')
+    what_next = message('blue','Please hit enter to start the application...')
 
     if what_next == '':
         clear_screen()
