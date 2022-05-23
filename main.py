@@ -775,8 +775,8 @@ def registration_interface(registree_type: object,registrees_list: list):
 
         registration_fields = get_registration_fields(new_registree)
 
-        registreeType= registree_type.lower()
-        print(f'Registering a new {registree_type}...\n')
+        registreeType= type(new_registree).__name__
+        print(f'Registering a new {registreeType}...\n')
 
         previous_menu = False
         # Each header will be used as a key for the user input during adding patient information
@@ -846,13 +846,13 @@ def registration_interface(registree_type: object,registrees_list: list):
                     new_registree = None    
                     print('\033[92mThe record was saved successfully\033[0m')
                     input_item = message(
-                    'blue', f'Hit enter to add {registreeType} patient or enter -1 to go to previous menu: ')
+                    'blue', f'Hit enter to add another {registreeType}  or enter -1 to save and go to previous menu: ')
 
                 except RegisteredPatientsLimit:
                     print('\033[91mA maximum number of 500 patients can be registered for each doctor\033[0m')
     
     # Save objects data to a csv file
-    file_name = registree_type.lower() + 's_list'
+    file_name = registreeType.lower() + 's_list'
     list_to_csv(registrees_list,file_name)
 
 
@@ -952,7 +952,7 @@ def select_record(type: object, objects_list:list,doctor=None):
         try:
             int(file_no)
         except:
-            file_no = message('red''Please enter a valid number: ')
+            file_no = message('red','Please enter a valid number: ')
         
     while file_no not in [item[0] for item in objects_list]:
         if file_no == '-1':
@@ -1191,8 +1191,33 @@ def view_consultations(preselected_provider):
     return selected_provider
 
 
-def view_prescriptions(selected_doctor):
-    pass
+def view_prescriptions(preselected_doctor):
+
+    if not preselected_doctor:
+        print_list(doctors_headers,doctors_list)
+        print('') # A new line
+        selected_provider = select_record(Doctor,doctors_list)
+
+    else:
+        selected_provider = preselected_doctor
+
+    if selected_provider != None:
+        prescriptions = [prescription for prescription in prescriptions_list if
+        prescription[5] == str(selected_provider) ]
+        print('') # A new line
+        print_list(prescription_headers,prescriptions)
+
+        what_next = message('blue','Hit enter to return to the previous menu',True)
+        if what_next == '':
+        
+            clear_screen()
+            doctor_interface()
+
+    else:
+        clear_screen()
+        main_screen()
+    
+    return selected_provider
 
 
 def get_doctor(selected_patient):
@@ -1214,28 +1239,36 @@ def receptionist_interface():
 
         clear_screen()
         options = [
-            'Register Patients','View Appointments',
+            'View Registered Patients','Register Patients','View Appointments',
             'Book Appointment / Request Repeat','Cancel Appointments',
             'Prescription Repeat Request','Generate Appointments Schedules']
         menu_selection = menu(options)
 
-        if menu_selection == '1' :
+        if menu_selection == '1':
+            clear_screen()
+            import_from_cv()
+            print_list(patients_headers)
+            print('') # A new line
+            import_schedules_from_cv()
+            main_screen()
+
+        if menu_selection == '2' :
             clear_screen()
             registration_interface(Patient,patients_list)
 
-        if menu_selection == '2' :
+        if menu_selection == '3' :
             view_appointments()
 
-        if menu_selection == '3' :
+        if menu_selection == '4' :
             appointments_interface()
 
-        if menu_selection == '4' :
+        if menu_selection == '5' :
             receptionist.cancel_appointment()
 
-        if menu_selection == '5' :
+        if menu_selection == '6' :
             receptionist.forward_repeat_request()
 
-        if menu_selection == '6' :
+        if menu_selection == '7' :
             generate_appointments_schedules()
 
         elif  menu_selection == '-1' :
@@ -1279,6 +1312,9 @@ def doctor_interface():
     selected_doctor = select_record(Doctor,doctors_list)
     clear_screen()
    
+    if selected_doctor in [None,'']:
+        return None
+
     while True:
 
         options = ['View Appointments','Write a Consultation','Write a Prescription','View Consultations','View Prescriptions']
@@ -1457,27 +1493,20 @@ def clear_screen():
 def main_screen():
     '''Main user interface'''
 
-    options=['Print','Receptionist','Nurse','Doctor','Administration']
+    options=['Receptionist','Nurse','Doctor','Administration']
     main_menu = menu(options)
 
+  
     if main_menu == '1':
-       clear_screen()
-       import_from_cv()
-       print_list(patients_headers)
-       print('') # A new line
-       import_schedules_from_cv()
-       main_screen()
-   
-    elif main_menu == '2':
         receptionist_interface()
 
-    elif main_menu == '3':
+    elif main_menu == '2':
         nurse_interface()
 
-    elif main_menu == '4':
+    elif main_menu == '3':
         doctor_interface()
 
-    elif main_menu == '5':
+    elif main_menu == '4':
         clear_screen()
         administration_interface()
 

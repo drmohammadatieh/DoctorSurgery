@@ -31,7 +31,7 @@ class TestClinic(unittest.TestCase):
     def test_register_patient(self):
         '''Tests the process of registering a patient'''
 
-        patients_list.clear()
+        import_from_cv()
         main.register(self.patient_1)
         patients_list.append (object_to_list(self.patient_1))
         main.register(self.patient_2)
@@ -130,6 +130,7 @@ class TestClinic(unittest.TestCase):
         list_to_csv(doctors_list,'doctors_list')
         os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
 
+
     def test_find_next_available(self):
         '''Tests the function of finding next available appointment'''
 
@@ -154,28 +155,28 @@ class TestClinic(unittest.TestCase):
         self.delete_test_schedule()
 
 
-    def test_cancel_appointment(self):
-        '''Test appointment cancelling'''
+    # def test_cancel_appointment(self):
+    #     '''Test appointment cancelling'''
         
-        # Setup test appoinments_schedule
-        self.setup_test_schedule()
+    #     # Setup test appoinments_schedule
+    #     self.setup_test_schedule()
 
-        # Find first available appointment
-        appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
-        appoinment_index =appoinment_match[1]
+    #     # Find first available appointment
+    #     appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
+    #     appoinment_index =appoinment_match[1]
 
-        # Initialize a receptionist
-        receptionist = Receptionist('999','Test','Test')
+    #     # Initialize a receptionist
+    #     receptionist = Receptionist('999','Test','Test')
 
-        # Cancel the appointment
-        receptionist.cancel_appointment(appoinment_index,self.doctor_1)
+    #     # Cancel the appointment
+    #     receptionist.cancel_appointment(appoinment_index,self.doctor_1)
 
-        # Check that the cancelled appointment was deleted 
-        self.assertTrue(doctors_appointments[str(self.doctor_1)][appoinment_index][3]=='')
+    #     # Check that the cancelled appointment was deleted 
+    #     self.assertTrue(doctors_appointments[str(self.doctor_1)][appoinment_index][3]=='')
 
-        # Delete the data created for the test
-        self.delete_test_schedule()
-        del receptionist
+    #     # Delete the data created for the test
+    #     self.delete_test_schedule()
+    #     del receptionist
 
 
             
