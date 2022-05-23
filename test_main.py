@@ -18,20 +18,21 @@ class TestClinic(unittest.TestCase):
     
         print('\033[38;5;15;48;5;20m Running Self Tests!:\033[0m')
 
-        cls.users_list = []
-        file_no_1 = max([int(patient[0]) for patient in patients_list]) + 1
-        file_no_2 = file_no_1 + 1
-        cls.patient_1_info = [f'{file_no_1}','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller']
-        cls.patient_2_info = [f'{file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']
+        import_from_cv()
+        # cls.users_list = []
+        cls.file_no_1 = max([int(patient[0]) for patient in patients_list]) + 1
+        cls.file_no_2 = cls.file_no_1 + 1
+        cls.patient_1_info = [f'{cls.file_no_1}','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller']
+        cls.patient_2_info = [f'{cls.file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']
         cls.patient_1 = main.Patient('','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller')
         cls.patient_2 = main.Patient('','Jude','Basin','8069 Florian St','275-850-5092','David Miller')
-        cls.patients_list_1 =[[f'{file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller']]
-        cls.patients_list_2 =[[f'{file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller'],
-        [f'{file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']]
+        cls.patients_list_1 =[[f'{cls.file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller']]
+        cls.patients_list_2 =[[f'{cls.file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller'],
+        [f'{cls.file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']]
         cls.doctor_1_info= ['999','David' ,'Miller']
         cls.doctor_1 = Doctor(*cls.doctor_1_info)
 
-    @classmethod
+    
     def setup_test_schedule(cls):
         '''Sets up a test appointments_schedule'''
 
@@ -55,7 +56,7 @@ class TestClinic(unittest.TestCase):
         # Import the generated appointment schedule from csv file
         import_from_cv()
 
-    @classmethod
+ 
     def delete_test_schedule(cls):
         '''Deletes the test appointments_schedule'''
 
@@ -92,7 +93,6 @@ class TestClinic(unittest.TestCase):
             register(self.patient_2)
 
 
-        
     def test_check_duplicate(self):
         '''Tests the process of detecting duplicate patient information'''
 
@@ -121,7 +121,7 @@ class TestClinic(unittest.TestCase):
         self.assertEqual(patient.last_name,'Manassa')
         self.assertEqual(patient.address,'3844 Yeager St')
         self.assertEqual(patient.phone,'712-235-9932')
-        self.assertEqual(patient.file_no,'1')
+        self.assertEqual(patient.file_no,f'{self.file_no_1}')
 
         # Test converting healthcare professional info to an object
         healthcare_professional = list_to_object(Doctor,self.doctor_1_info)
@@ -147,7 +147,6 @@ class TestClinic(unittest.TestCase):
         appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
         AppointmentSchedule.add_appointment(*appoinment_match)
 
-
         # Test the Class of the generated appointment
         self.assertIsInstance(appoinment_match[0],Appointment)
 
@@ -157,9 +156,8 @@ class TestClinic(unittest.TestCase):
         day, month, year = appoinment_match[0].date.split('-')
         test_date = datetime.date(year=int(year), month=int(month), day=int(day))
         self.assertTrue(test_date >= date)
-
-       
         self.delete_test_schedule()
+
 
     def test_cancel_appointment(self):
         
