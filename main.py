@@ -36,7 +36,7 @@ doctors_headers =['Employee Number','Fist Name','Last Name']
 nurses_headers =['Employee Number','Fist Name','Last Name']
 appointments_headers = ['Appointment No.','Date','Time','File No.',"Patient's Name","(Urgent) File No.",'(Urgent) Name']
 prescription_headers = ['Prescription No.','Date','Time',"Patient's Name",'Type','Quantity','Dosage',"Doctor's Name"]
-consultations_headers = []
+consultations_headers = ['Consultation No.','Date','Time','File No.',"Patient's Name",'Consultation Details                    ']
 
 ### End of Global Variables ###
 
@@ -200,7 +200,7 @@ Attributes: type: str,patient: Patient,doctor: Doctor,quantity: int,dosage: floa
 
     global prescriptions_list # access the global prescriptions_list that contains all prescriptions in list format
     obj_list = [] # Stores prescriptions as objects
-    def __init__(self,date:datetime.date, time: datetime.time,patient: Patient, type: str,quantity: int,dosage: float,doctor: Doctor) -> None:
+    def __init__(self,date:datetime.date, time: datetime.time,patient: Patient, type: str,quantity: str,dosage: str,doctor: Doctor) -> None:
 
         self.date = date
         self.time = time
@@ -1120,6 +1120,39 @@ def view_appointments(preselected_provider = None):
     return selected_provider
     
    
+def view_consulations(preselected_provider):
+    
+    if not preselected_provider:
+        print_list(doctors_headers,doctors_list)
+        print('') # A new line
+        selected_provider = select_record(Doctor,doctors_list)
+
+    else:
+        selected_provider = preselected_provider
+
+    if selected_provider != None:
+        consultations = [consulation for consulation in consultations_list if
+        consulation[5] == str(selected_provider) ]
+        print('') # A new line
+        print_list(consultations_headers,consultations)
+
+        what_next = message('blue','Hit enter to return to the previous menu',True)
+        if what_next == '':
+            if isinstance(preselected_provider,Doctor):
+                doctor_interface()
+
+            else:
+                nurse_interface()
+
+    else:
+        receptionist_interface()
+    
+    return selected_provider
+
+
+def view_consulations(selected_doctor):
+    pass
+
 
 def get_doctor(selected_patient):
     '''Gets doctor object from patient information'''
@@ -1140,7 +1173,7 @@ def receptionist_interface():
 
         clear_screen()
         options = [
-            'Register Patients','Edit/Delete Patients','View Appointments',
+            'Register Patients','View Appointments',
             'Book Appointment / Request Repeat','Cancel Appointments',
             'Prescription Repeat Request','Generate Appointments Schedules']
         menu_selection = menu(options)
@@ -1150,21 +1183,18 @@ def receptionist_interface():
             registration_interface(Patient,patients_list)
 
         if menu_selection == '2' :
-            edit_delete_interface()
-
-        if menu_selection == '3' :
             view_appointments()
 
-        if menu_selection == '4' :
+        if menu_selection == '3' :
             appointments_interface()
 
-        if menu_selection == '5' :
+        if menu_selection == '4' :
             receptionist.cancel_appointment()
 
-        if menu_selection == '6' :
+        if menu_selection == '5' :
             receptionist.forward_repeat_request()
 
-        if menu_selection == '7' :
+        if menu_selection == '6' :
             generate_appointments_schedules()
 
         elif  menu_selection == '-1' :
@@ -1189,7 +1219,7 @@ def doctor_interface():
    
     while True:
 
-        options = ['View Appointments','Write Consultation','Write Prescription']
+        options = ['View Appointments','Write Consultation','Write Prescription','View Consultations','View Prescriptions']
         menu_selection = menu(options)
 
         if menu_selection == '1':
@@ -1200,6 +1230,12 @@ def doctor_interface():
 
         if menu_selection == '3':
             selected_doctor.issue_prescription()
+
+        if menu_selection == '4':
+            view_consulations()
+
+        if menu_selection == '5':
+            view_prescriptions()
 
         if menu_selection == '-1':
             clear_screen()

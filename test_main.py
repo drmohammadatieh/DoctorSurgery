@@ -3,7 +3,7 @@ import os
 import csv
 import datetime
 import main
-from main import RegisteredPatientsLimit , patients_list
+from main import RegisteredPatientsLimit , patients_list, today, now
 from main import * 
 
 
@@ -14,8 +14,7 @@ class TestClinic(unittest.TestCase):
     
         print('\033[38;5;15;48;5;20m Running Self Tests!:\033[0m')
 
-        import_from_cv()
-        # cls.users_list = []
+        main.import_from_cv()
         cls.file_no_1 = max([int(patient[0]) for patient in patients_list]) + 1
         cls.file_no_2 = cls.file_no_1 + 1
         cls.patient_1_info = [f'{cls.file_no_1}','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller']
@@ -26,19 +25,16 @@ class TestClinic(unittest.TestCase):
         cls.patients_list_2 =[[f'{cls.file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller'],
         [f'{cls.file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']]
         cls.doctor_1_info= ['999','David' ,'Miller']
-        cls.doctor_1 = Doctor(*cls.doctor_1_info)
-
-    
-    
+        cls.doctor_1 = main.Doctor(*cls.doctor_1_info)
 
 
     def test_register_patient(self):
         '''Tests the process of registering a patient'''
 
         patients_list.clear()
-        register(self.patient_1)
+        main.register(self.patient_1)
         patients_list.append (object_to_list(self.patient_1))
-        register(self.patient_2)
+        main.register(self.patient_2)
         patients_list.append (object_to_list(self.patient_1))
         # Check if the patient object attributes matches the given patient information
         self.assertEqual(self.patient_1_info, list(vars(self.patient_1).values()))
@@ -46,7 +42,7 @@ class TestClinic(unittest.TestCase):
         patients_list.clear()
 
 
-    def test_register_patient_limit(self):
+    def test_patient_limit(self):
         '''Tests of the 500 patients registration limit'''
 
         patients_list.clear()
@@ -102,7 +98,6 @@ class TestClinic(unittest.TestCase):
         self.assertEqual(patients_list,self.patients_list_1)
 
 
-
     def setup_test_schedule(cls):
         '''Sets up a test appointments_schedule'''
 
@@ -154,18 +149,31 @@ class TestClinic(unittest.TestCase):
         day, month, year = appoinment_match[0].date.split('-')
         test_date = datetime.date(year=int(year), month=int(month), day=int(day))
         self.assertTrue(test_date >= date)
+
+        # Delete the data created for the test
         self.delete_test_schedule()
 
 
     def test_cancel_appointment(self):
+        '''Test appointment cancelling'''
         
-        
+        # Setup test appoinments_schedule
         self.setup_test_schedule()
+
+        # Find first available appointment
         appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
         appoinment_index =appoinment_match[1]
+
+        # Initialize a receptionist
         receptionist = Receptionist('999','Test','Test')
+
+        # Cancel the appointment
         receptionist.cancel_appointment(appoinment_index,self.doctor_1)
+
+        # Check that the cancelled appointment was deleted 
         self.assertTrue(doctors_appointments[str(self.doctor_1)][appoinment_index][3]=='')
+
+        # Delete the data created for the test
         self.delete_test_schedule()
         del receptionist
 
