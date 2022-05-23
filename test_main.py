@@ -155,6 +155,28 @@ class TestClinic(unittest.TestCase):
         self.delete_test_schedule()
 
 
+    # def test_cancel_appointment(self):
+    #     '''Test appointment cancelling'''
+        
+    #     # Setup test appoinments_schedule
+    #     self.setup_test_schedule()
+
+    #     # Find first available appointment
+    #     appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
+    #     appoinment_index =appoinment_match[1]
+
+    #     # Initialize a receptionist
+    #     receptionist = Receptionist('999','Test','Test')
+
+    #     # Cancel the appointment
+    #     receptionist.cancel_appointment(appoinment_index,self.doctor_1)
+
+    #     # Check that the cancelled appointment was deleted 
+    #     self.assertTrue(doctors_appointments[str(self.doctor_1)][appoinment_index][3]=='')
+
+    #     # Delete the data created for the test
+    #     self.delete_test_schedule()
+    #     del receptionist
 
 
             
