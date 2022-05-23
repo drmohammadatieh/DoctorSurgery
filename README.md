@@ -19,14 +19,13 @@ This application is designed for doctors surgery / clinic.
   - [Option 4: Administration](#option-4-administration)
   - [Option 5: Return to the main menu anywhere in the program](#option-5-return-to-the-main-menu-anywhere-in-the-program)
   - [Option 6: Quit the program from the main menu](#option-6-quit-the-program-from-the-main-menu)
-- [Testing](#testing)
 - [Built Using](#built-using)
 - [Author](#author)
 - [License MIT](#license-mit)
 
 ## About
 
-This application is for doctors surgery / clinic. It provides a user-friendly command-line interface for registering patients, doctors and nurses. Also, it provides the ability to generate appointment schedules for doctors and nurses, reserve / cancel appointments for patients, write consultations and issue prescriptions. Object-Oriented programming methodology was used for this application according to the following design:
+This application is for doctors surgery/clinic. It provides a user-friendly command-line interface for registering patients, doctors and nurses. Also, it provides the ability to generate appointment schedules for doctors and nurses, reserve / cancel appointments for patients, write consultations and issue prescriptions. Object-Oriented programming methodology was used for this application according to a pre-established design as shown in the class diagram below. This programming methodology enables the representation of real-life objects/people. For example, patients, doctors and nurses were represented by a class for each; a Patient class for patients, A Doctor class for Doctors and a Nurse class for Nurses. Another important aspect is the need for adequate testing. Python Unit testing was used to test the most important functions like registering patients, saving data to and importing data from csv files, and finding next available appointment. In addition, dummy data was provided for user-testing most of which were generated using DumbData website (http://dumbdata.com/).
 
 <img src="images/Design.png" width="1000">
 
@@ -112,10 +111,6 @@ This program has a user-friendly CLI interface as seen above. To navigate throug
   To quit the application completely, you just need to return to the main menu then type 0 followed by enter key.
   <img src="images/main_screen.png" width="1000">
    
-## Testing
-
-  Python Unit testing was used to test the most important functions like registering patients, saving data to and importing data from csv files, and finding next available appointment.
-
 
 ## Built Using
 
