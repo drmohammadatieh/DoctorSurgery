@@ -7,11 +7,7 @@ from main import RegisteredPatientsLimit , patients_list
 from main import * 
 
 
-
-
-
 class TestClinic(unittest.TestCase):
-
 
     @classmethod
     def setUpClass(cls):
