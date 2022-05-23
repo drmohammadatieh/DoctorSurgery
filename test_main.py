@@ -1,8 +1,9 @@
 import unittest
 import os
 import csv
+import datetime
 import main
-from main import RegisteredPatientsLimit # Review
+from main import RegisteredPatientsLimit , patients_list
 from main import * 
 
 
@@ -13,20 +14,55 @@ class TestClinic(unittest.TestCase):
 
 
     @classmethod
-    def setUpClass(cls) -> None:
+    def setUpClass(cls):
     
         print('\033[38;5;15;48;5;20m Running Self Tests!:\033[0m')
 
         cls.users_list = []
-        cls.patient_1_info = ['1','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller']
-        cls.patient_2_info = ['2','Jude','Basin','8069 Florian St','275-850-5092','David Miller']
+        file_no_1 = max([int(patient[0]) for patient in patients_list]) + 1
+        file_no_2 = file_no_1 + 1
+        cls.patient_1_info = [f'{file_no_1}','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller']
+        cls.patient_2_info = [f'{file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']
         cls.patient_1 = main.Patient('','Rolland', 'Manassa','3844 Yeager St','712-235-9932','David Miller')
         cls.patient_2 = main.Patient('','Jude','Basin','8069 Florian St','275-850-5092','David Miller')
-        cls.patients_list_1 =[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller']]
-        cls.patients_list_2 =[['1','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller'],
-        ['2','Jude','Basin','8069 Florian St','275-850-5092','David Miller']]
+        cls.patients_list_1 =[[f'{file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller']]
+        cls.patients_list_2 =[[f'{file_no_1}','Rolland', 'Manassa', '3844 Yeager St', '712-235-9932','David Miller'],
+        [f'{file_no_2}','Jude','Basin','8069 Florian St','275-850-5092','David Miller']]
         cls.doctor_1_info= ['999','David' ,'Miller']
         cls.doctor_1 = Doctor(*cls.doctor_1_info)
+
+    @classmethod
+    def setup_test_schedule(cls):
+        '''Sets up a test appointments_schedule'''
+
+        # Register a test doctor
+        register(cls.doctor_1)
+        doctors_list= []
+        # Add the test doctor to the doctors_list.csv
+        file = os.getcwd() + '/doctors_list.csv'
+        with open(file,'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                doctors_list.append(row)
+
+        doctors_list.append(cls.doctor_1_info)
+        list_to_csv(doctors_list,'doctors_list')
+
+        # Create an AppointmentSchedule object
+        appointment_schedule = AppointmentSchedule(cls.doctor_1,1,3)
+        appointment_schedule.generate_slots()
+
+        # Import the generated appointment schedule from csv file
+        import_from_cv()
+
+    @classmethod
+    def delete_test_schedule(cls):
+        '''Deletes the test appointments_schedule'''
+
+        # Delete the test doctor from the doctors_list.csv
+        doctors_list.pop()
+        list_to_csv(doctors_list,'doctors_list')
+        os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
 
 
     def test_register_patient(self):
@@ -104,47 +140,38 @@ class TestClinic(unittest.TestCase):
     def test_find_next_available(self):
         '''Tests the function of finding next available appointment'''
 
-        # Register a test doctor
-        register(self.doctor_1)
-        doctors_list= []
-        # Add the test doctor to the doctors_list.csv
-        file = os.getcwd() + '/doctors_list.csv'
-        with open(file,'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                doctors_list.append(row)
-
-        doctors_list.append(self.doctor_1_info)
-        list_to_csv(doctors_list,'doctors_list')
-
-        # Create an AppointmentSchedule object
-        appointment_schedule = AppointmentSchedule(self.doctor_1,1,3)
-        appointment_schedule.generate_slots()
-
-        # Import the generated appointment schedule from csv file
-        import_from_cv()
+        # Setup test appoinments_schedule
+        self.setup_test_schedule()
 
         # Find first available appointment
         appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
         AppointmentSchedule.add_appointment(*appoinment_match)
 
 
-        def test_cancel_appointment(self):
-
-            receptionist.cancel_appointment(appoinment_match[1],)
-
-
-
         # Test the Class of the generated appointment
         self.assertIsInstance(appoinment_match[0],Appointment)
 
         # Verify that the first available appointment for Dr. David Miller was chosen
-        self.assertEqual(appoinment_match[0].date,doctors_appointments['David Miller'][0][1])
+        day, month, year = doctors_appointments['David Miller'][0][1].split('-')
+        date = datetime.date(year=int(year), month=int(month), day=int(day))
+        day, month, year = appoinment_match[0].date.split('-')
+        test_date = datetime.date(year=int(year), month=int(month), day=int(day))
+        self.assertTrue(test_date >= date)
 
-        # Delete the test doctor from the doctors_list.csv
-        doctors_list.pop()
-        list_to_csv(doctors_list,'doctors_list')
-        os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
+       
+        self.delete_test_schedule()
+
+    def test_cancel_appointment(self):
+        
+        
+        self.setup_test_schedule()
+        appoinment_match = AppointmentSchedule.find_next_available(self.patient_1,False)
+        appoinment_index =appoinment_match[1]
+        receptionist = Receptionist('999','Test','Test')
+        receptionist.cancel_appointment(appoinment_index,self.doctor_1)
+        self.assertTrue(doctors_appointments[str(self.doctor_1)][appoinment_index][3]=='')
+        self.delete_test_schedule()
+        del receptionist
 
 
             
