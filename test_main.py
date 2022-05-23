@@ -29,37 +29,7 @@ class TestClinic(unittest.TestCase):
         cls.doctor_1 = Doctor(*cls.doctor_1_info)
 
     
-    def setup_test_schedule(cls):
-        '''Sets up a test appointments_schedule'''
-
-        # Register a test doctor
-        register(cls.doctor_1)
-        doctors_list= []
-        # Add the test doctor to the doctors_list.csv
-        file = os.getcwd() + '/doctors_list.csv'
-        with open(file,'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                doctors_list.append(row)
-
-        doctors_list.append(cls.doctor_1_info)
-        list_to_csv(doctors_list,'doctors_list')
-
-        # Create an AppointmentSchedule object
-        appointment_schedule = AppointmentSchedule(cls.doctor_1,1,3)
-        appointment_schedule.generate_slots()
-
-        # Import the generated appointment schedule from csv file
-        import_from_cv()
-
- 
-    def delete_test_schedule(cls):
-        '''Deletes the test appointments_schedule'''
-
-        # Delete the test doctor from the doctors_list.csv
-        doctors_list.pop()
-        list_to_csv(doctors_list,'doctors_list')
-        os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
+    
 
 
     def test_register_patient(self):
@@ -96,7 +66,6 @@ class TestClinic(unittest.TestCase):
         patients_list.append (object_to_list(self.patient_1))
         self.assertTrue(check_duplicate(self.patient_1,patients_list)[0])
         patients_list.clear()
-      
           
 
     def test_save_data_to_list(self):
@@ -132,6 +101,39 @@ class TestClinic(unittest.TestCase):
         csv_to_list(patients_list,file)
         self.assertEqual(patients_list,self.patients_list_1)
 
+
+
+    def setup_test_schedule(cls):
+        '''Sets up a test appointments_schedule'''
+
+        # Register a test doctor
+        register(cls.doctor_1)
+        doctors_list= []
+        # Add the test doctor to the doctors_list.csv
+        file = os.getcwd() + '/doctors_list.csv'
+        with open(file,'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                doctors_list.append(row)
+
+        doctors_list.append(cls.doctor_1_info)
+        list_to_csv(doctors_list,'doctors_list')
+
+        # Create an AppointmentSchedule object
+        appointment_schedule = AppointmentSchedule(cls.doctor_1,1,3)
+        appointment_schedule.generate_slots()
+
+        # Import the generated appointment schedule from csv file
+        import_from_cv()
+
+ 
+    def delete_test_schedule(cls):
+        '''Deletes the test appointments_schedule'''
+
+        # Delete the test doctor from the doctors_list.csv
+        doctors_list.pop()
+        list_to_csv(doctors_list,'doctors_list')
+        os.remove(os.getcwd() + '/appointments_schedule - Dr. David Miller.csv')
 
     def test_find_next_available(self):
         '''Tests the function of finding next available appointment'''
